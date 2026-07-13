@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TicketSystem.Api/TicketSystem.Api.csproj" />
+    <Project Path="src/TicketSystem.Blazor/TicketSystem.Blazor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TicketSystem.Tests/TicketSystem.Tests.csproj" />
+  </Folder>
+</Solution>

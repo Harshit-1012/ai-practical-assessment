@@ -1,0 +1,358 @@
+# Cursor AI Rules for Support Ticket Management System
+
+## Project Context
+This is a Support Ticket Management System built with Blazor WebAssembly, ASP.NET Core Web API (.NET 9), and SQL Server. The project is part of a .NET AI Capability Exercise focusing on demonstrating effective AI-assisted development across the full software lifecycle.
+
+## Technology Stack Conventions
+
+### .NET 9 and C# 12
+- Use modern C# 12 features: file-scoped namespaces, primary constructors where appropriate
+- Use top-level statements in Program.cs
+- Prefer `var` for local variables when type is obvious
+- Use nullable reference types (`#nullable enable`)
+- Async/await throughout - all I/O operations must be async
+- Use `required` keyword for required properties in DTOs
+
+### ASP.NET Core Web API
+- Controllers should inherit from `ControllerBase`
+- Use `[ApiController]` attribute on all controllers
+- Return `ActionResult<T>` for all action methods
+- Use proper HTTP status codes: 200 (OK), 201 (Created), 204 (No Content), 400 (Bad Request), 404 (Not Found), 500 (Internal Server Error)
+- Use route templates: `[Route("api/[controller]")]`
+- Use HTTP verb attributes: `[HttpGet]`, `[HttpPost]`, `[HttpPut]`, `[HttpDelete]`
+- Model binding validation automatically handled by `[ApiController]`
+
+### Entity Framework Core
+- DbContext should have scoped lifetime (default)
+- Always use async methods: `SaveChangesAsync()`, `ToListAsync()`, `FirstOrDefaultAsync()`
+- Configure entities using Fluent API in `OnModelCreating`
+- Use migrations for schema changes: `dotnet ef migrations add MigrationName`
+- Always include navigation properties for relationships
+- Use proper foreign key configurations
+
+### Blazor WebAssembly
+- Components should use file-scoped namespace
+- Use `@page` directive for routable pages
+- Use `[Parameter]` for component parameters
+- Use `@inject` for dependency injection
+- Handle loading states with boolean flags
+- Display user-friendly error messages
+- Use `StateHasChanged()` when updating UI after async operations
+- Bootstrap 5 for styling
+
+## Naming Conventions
+
+### C# Naming
+- **Classes, Methods, Properties:** PascalCase (`TicketService`, `GetTicketById`, `AssignedToId`)
+- **Private fields:** _camelCase with underscore (`_dbContext`, `_stateMachine`)
+- **Parameters, local variables:** camelCase (`ticketId`, `newStatus`)
+- **Interfaces:** IPascalCase (`ITicketStateMachine`, `ITicketService`)
+- **Constants:** PascalCase (`MaxTitleLength`)
+- **Async methods:** Suffix with `Async` (`CreateTicketAsync`, `SaveChangesAsync`)
+
+### File Naming
+- **Controllers:** `[Entity]Controller.cs` (e.g., `TicketsController.cs`)
+- **Services:** `[Entity]Service.cs` and `I[Entity]Service.cs`
+- **DTOs:** `[Action][Entity]Dto.cs` (e.g., `CreateTicketDto.cs`, `TicketResponseDto.cs`)
+- **Entities/Models:** `[Entity].cs` (e.g., `Ticket.cs`, `User.cs`)
+- **Blazor Pages:** `[PageName].razor` (e.g., `TicketList.razor`)
+- **Components:** `[ComponentName].razor` (e.g., `StatusBadge.razor`)
+
+## Code Organization
+
+### Project Structure
+```
+src/
+  TicketSystem.Api/
+    Controllers/
+    Services/
+    Models/
+    DTOs/
+    Data/
+    Middleware/
+    Program.cs
+  TicketSystem.Blazor/
+    Pages/
+    Components/
+    Services/
+    Program.cs
+tests/
+  TicketSystem.Tests/
+    UnitTests/
+    IntegrationTests/
+```
+
+### Layer Responsibilities
+- **Controllers:** HTTP handling, routing, model binding, delegating to services
+- **Services:** Business logic, orchestration, transaction management
+- **Data/DbContext:** Database access, entity configurations
+- **DTOs:** Data transfer objects for API requests/responses
+- **Models/Entities:** Database entities with relationships
+
+## State Machine Requirements
+
+### Critical Piece - Enforce Valid Transitions Only
+The ticket state machine is the signature piece of this project. Always validate transitions:
+
+**Valid Transitions:**
+- Open → InProgress
+- Open → Cancelled
+- InProgress → Resolved
+- InProgress → Cancelled
+- Resolved → Closed
+
+**Invalid Transitions (Must Be Rejected):**
+- Open → Resolved
+- Open → Closed
+- Resolved → InProgress
+- Resolved → Open
+- Any transition from Closed (terminal state)
+- Any transition from Cancelled (terminal state)
+
+**Implementation Pattern:**
+```csharp
+public interface ITicketStateMachine
+{
+    bool CanTransition(TicketStatus from, TicketStatus to);
+    void ValidateTransition(TicketStatus from, TicketStatus to);
+}
+```
+
+- `CanTransition` returns true/false
+- `ValidateTransition` throws exception if invalid
+- Use enums for TicketStatus, not strings in logic
+- All status changes must go through state machine validation
+
+## Error Handling
+
+### Backend
+- Use global exception handling middleware
+- Return structured error responses with consistent format
+- Include validation errors in 400 responses
+- Log exceptions with sufficient context
+- Never expose stack traces to clients in production
+
+### Frontend
+- Catch API errors and display user-friendly messages
+- Show loading states during async operations
+- Handle network failures gracefully
+- Validate forms before submission
+
+## Validation Rules
+
+### Required Fields
+- Ticket: Title, Description, Priority, CreatedById
+- Comment: Message, TicketId, CreatedById
+
+### String Lengths
+- Ticket.Title: max 200 characters
+- Ticket.Description: max 5000 characters
+- Comment.Message: max 2000 characters
+- User.Email: max 320 characters
+
+### Enum Validation
+- Priority: Low, Medium, High, Critical
+- Status: Open, InProgress, Resolved, Closed, Cancelled
+- Role: Admin, Agent, User
+
+### Foreign Key Validation
+- AssignedToId must exist in Users (if not null)
+- CreatedById must exist in Users
+- TicketId must exist in Tickets (for comments)
+
+## Testing Standards
+
+### Test Naming
+Use format: `MethodName_Scenario_ExpectedResult`
+```csharp
+[Fact]
+public void CreateTicket_ValidData_Returns201Created()
+
+[Fact]
+public void ChangeStatus_InvalidTransition_Returns400BadRequest()
+```
+
+### State Machine Tests (Mandatory)
+- Test all 5 valid transitions succeed
+- Test all invalid transitions return 400
+- Test state persistence in database
+- Use integration tests, not just unit tests
+
+### Test Organization
+- UnitTests/ folder for isolated logic tests
+- IntegrationTests/ folder for API endpoint tests
+- Use WebApplicationFactory for integration tests
+- Use SQLite in-memory for test database
+
+## Security Best Practices
+
+### Never Commit
+- Passwords or credentials
+- API keys or secrets
+- Connection strings with passwords
+
+### Always Use
+- Parameterized queries (EF Core does this automatically)
+- HTTPS in production
+- CORS configuration for Blazor
+- Input validation on server side
+- Environment variables or User Secrets for sensitive data
+
+## Code Quality Standards
+
+### Keep Methods Small
+- Max 30-40 lines per method
+- Single responsibility principle
+- Extract complex logic into separate methods
+
+### Comments
+- No obvious comments like "// Create ticket"
+- Comment complex business logic
+- Comment state machine transition rules
+- XML comments on public APIs (optional but recommended)
+
+### DRY (Don't Repeat Yourself)
+- Extract common logic into services
+- Create reusable Blazor components
+- Use base classes or extension methods for shared functionality
+
+### Prefer Composition Over Inheritance
+- Use dependency injection
+- Interface-based design for services
+- Avoid deep inheritance hierarchies
+
+## Documentation Standards
+
+### Code Documentation
+- XML comments on public methods and classes (optional)
+- README with clear setup instructions
+- Database setup documented
+- API endpoints documented
+
+### AI Usage Documentation
+- Track all prompts in ai-prompts/ folder
+- Document what was accepted, changed, rejected
+- Show iteration and refinement, not copy-paste
+- Validate all AI-generated code before committing
+
+## Cursor-Specific Instructions
+
+### When Generating Code
+1. Always ask for clarification if requirements are unclear
+2. Provide code with proper error handling
+3. Include null checks where appropriate
+4. Use async/await consistently
+5. Follow the naming conventions above
+6. Generate code that compiles without modification when possible
+
+### When Refactoring
+- Maintain existing patterns in the codebase
+- Don't introduce new patterns without explicit request
+- Keep changes minimal and focused
+- Preserve existing tests
+
+### When Debugging
+- Analyze error messages carefully
+- Consider state machine rules for status-related errors
+- Check database constraints for FK violations
+- Verify async/await usage
+
+### When Creating Tests
+- Cover happy path and error cases
+- Include state machine transition tests
+- Use descriptive test names
+- Create independent, isolated tests
+
+## Project-Specific Patterns
+
+### Service Layer Pattern
+```csharp
+public class TicketService : ITicketService
+{
+    private readonly AppDbContext _context;
+    private readonly ITicketStateMachine _stateMachine;
+
+    public TicketService(AppDbContext context, ITicketStateMachine stateMachine)
+    {
+        _context = context;
+        _stateMachine = stateMachine;
+    }
+
+    public async Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto)
+    {
+        // Business logic here
+    }
+}
+```
+
+### Controller Pattern
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class TicketsController : ControllerBase
+{
+    private readonly ITicketService _ticketService;
+
+    public TicketsController(ITicketService ticketService)
+    {
+        _ticketService = ticketService;
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<TicketResponseDto>> GetTicket(int id)
+    {
+        // Delegate to service
+    }
+}
+```
+
+### Blazor Component Pattern
+```csharp
+@page "/tickets"
+@inject ITicketApiService TicketService
+
+<h3>Ticket List</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else
+{
+    // Display tickets
+}
+
+@code {
+    private List<TicketDto> tickets = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            tickets = await TicketService.GetAllTicketsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+```
+
+## Remember
+- This is an assessment project demonstrating AI-assisted development
+- Documentation is as important as working code
+- State machine validation is the critical signature piece
+- Always validate AI suggestions before accepting
+- Test all generated code
+- Maintain prompt history with iterations and decisions
