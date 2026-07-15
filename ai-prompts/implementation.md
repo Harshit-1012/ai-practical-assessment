@@ -154,3 +154,52 @@ logic correctly separated into services layer per constraint
 **Iteration Count:** 1
 **Outcome:** Frontend builds with 0 warnings, 0 errors — ready for 
 manual review
+
+
+### Prompt #4: Fix Loading Issue + Sidebar Styling
+
+**Date:** 2026-07-15
+**Context Provided:** Running Blazor app stuck on "Loading tickets..." 
+indefinitely; sidebar nav links appearing as plain underlined text
+
+**Prompt:**
+Two things to fix:
+
+The sidebar navigation looks unstyled — style as proper nav items:
+no underline, icon + label, hover state, active/selected state,
+matching the indigo/slate theme.
+The ticket list page is stuck on "Loading tickets..." indefinitely.
+Check console/network errors, verify API base URL matches running
+port, check CORS configuration. Fix root cause.
+
+**AI Response Summary:**
+Sidebar issue: nav styles were in MainLayout.razor.css but links live in 
+NavMenu.razor — Blazor CSS isolation doesn't cross component boundaries, 
+and NavLink renders its own `<a>` so scoped selectors never applied. 
+Fixed by moving styles to NavMenu.razor.css with `::deep`, plus a global 
+fallback in app.css.
+
+Loading issue: multiple compounding causes — (1) UseHttpsRedirection() 
+ran before UseCors() in Program.cs, causing Blazor's HTTP call to get 
+redirected to HTTPS and CORS to fail silently; (2) SearchFilter used 
+@bind:after which could re-trigger loads and keep isLoading stuck true; 
+(3) no HttpClient timeout, so failures could hang ~100s; (4) API not 
+running would produce the same symptom until timeout.
+
+**What Was Accepted:**
+- Middleware reordering (CORS before HTTPS redirect, disabled in Dev)
+- Explicit allowed origins list
+- SearchFilter changed to value + @onchange
+- HttpClient 30s timeout added
+- NavMenu.razor.css with ::deep + app.css fallback for sidebar
+
+**What Was Changed:** None further — verified fix directly
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Verified both apps build with 0 warnings/errors. Confirmed 
+via browser: sidebar shows proper nav styling with hover/active states; 
+ticket list loads correctly; CORS preflight from localhost:5036 succeeds 
+(204 with correct Access-Control-Allow-Origin header).

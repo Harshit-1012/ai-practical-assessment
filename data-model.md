@@ -1,74 +1,105 @@
 # Data Model
 
+## Overview
+
+The Support Ticket Management System uses a relational model with three entities (`User`, `Ticket`, `Comment`) persisted in **SQL Server** via **Entity Framework Core 9**. Enum-like values (status, priority, role) are stored as strings in the database and validated in application code using C# enums and extension helpers.
+
+**Database:** `TicketSystemDb` on SQL Server LocalDB  
+**Migration:** `20260714093803_InitialCreate`  
+**DbContext:** `AppDbContext` (`src/TicketSystem.Api/Data/AppDbContext.cs`)
+
+---
+
 ## Entities
 
 ### User
 
-**Purpose:** Represents system users who can create, be assigned to, and comment on tickets.
+**Purpose:** Represents system users who create tickets, are assigned to tickets, and author comments.
 
-**Fields:**
-- `Id` (int, PK): Primary key, auto-increment
-- `Name` (string, max 200): User's full name
-- `Email` (string, max 320): User's email address (unique)
-- `Role` (string, max 50): User's role (Admin, Agent, User)
+**Table:** `Users`
 
-**Constraints:**
-- Email must be unique
-- Role must be one of the predefined values
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `Id` | `int` | PK, identity |
+| `Name` | `nvarchar(200)` | Required |
+| `Email` | `nvarchar(320)` | Required, unique index |
+| `Role` | `nvarchar(50)` | Required |
 
-**Notes:**
-- Users are seeded in database, no CRUD operations in Core
-- Used for ticket assignment and tracking creators
+**Valid roles:** `Admin`, `Agent`, `User` (validated at application level; stored as string)
+
+**API exposure:** Read-only (`GET /api/users`, `GET /api/users/{id}`). No create/update/delete endpoints in Core.
+
+**Navigation properties:** None defined on the entity; referenced by `Ticket` and `Comment`.
 
 ---
 
 ### Ticket
 
-**Purpose:** Core entity representing a support ticket.
+**Purpose:** Core entity representing a support request.
 
-**Fields:**
-- `Id` (int, PK): Primary key, auto-increment
-- `Title` (string, max 200): Brief description of the issue
-- `Description` (string, max 5000): Detailed description
-- `Priority` (string, max 50): Priority level (Low, Medium, High, Critical)
-- `Status` (string, max 50): Current ticket status (Open, InProgress, Resolved, Closed, Cancelled)
-- `AssignedToId` (int, FK, nullable): References User.Id for assigned agent
-- `CreatedById` (int, FK): References User.Id for ticket creator
-- `CreatedAt` (DateTime): Timestamp when ticket was created
-- `UpdatedAt` (DateTime): Timestamp when ticket was last updated
+**Table:** `Tickets`
 
-**Relationships:**
-- One-to-many with User (AssignedTo)
-- One-to-many with User (CreatedBy)
-- One-to-many with Comment
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `Id` | `int` | PK, identity |
+| `Title` | `nvarchar(200)` | Required |
+| `Description` | `nvarchar(5000)` | Required |
+| `Priority` | `nvarchar(50)` | Required |
+| `Status` | `nvarchar(50)` | Required |
+| `AssignedToId` | `int` | FK → `Users.Id`, nullable |
+| `CreatedById` | `int` | FK → `Users.Id`, required |
+| `CreatedAt` | `datetime2` | Required |
+| `UpdatedAt` | `datetime2` | Required |
 
-**Constraints:**
-- Title is required
-- Description is required
-- CreatedById is required and must reference existing user
-- AssignedToId must reference existing user if not null
+**Valid priorities:** `Low`, `Medium`, `High`, `Critical` (`TicketPriority` enum)
+
+**Valid statuses:** `Open`, `InProgress`, `Resolved`, `Closed`, `Cancelled` (`TicketStatus` enum)
+
+**Navigation properties:**
+- `AssignedTo` → `User` (optional)
+- `CreatedBy` → `User` (required)
+- `Comments` → collection of `Comment`
+
+**Business rules (implemented in `TicketService`):**
+- New tickets are always created with status `Open` and `CreatedAt`/`UpdatedAt` set to UTC now.
+- `Title` and `Description` are trimmed on create/update.
+- `AssignedToId` and `CreatedById` must reference existing users when provided/required.
+- Status changes go through `TicketStateMachine` only (not via the update endpoint).
+
+**Delete behaviors:**
+- `AssignedTo` FK: `SetNull` (deleting a user clears assignment)
+- `CreatedBy` FK: `Restrict` (cannot delete a user who created tickets)
+- `Comments` cascade delete when a ticket is deleted
 
 ---
 
 ### Comment
 
-**Purpose:** Represents a comment added to a ticket.
+**Purpose:** A message attached to a ticket for collaboration and audit.
 
-**Fields:**
-- `Id` (int, PK): Primary key, auto-increment
-- `TicketId` (int, FK): References Ticket.Id
-- `Message` (string, max 2000): Comment text
-- `CreatedById` (int, FK): References User.Id for comment author
-- `CreatedAt` (DateTime): Timestamp when comment was created
+**Table:** `Comments`
 
-**Relationships:**
-- Many-to-one with Ticket
-- Many-to-one with User (CreatedBy)
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `Id` | `int` | PK, identity |
+| `TicketId` | `int` | FK → `Tickets.Id`, required |
+| `Message` | `nvarchar(2000)` | Required |
+| `CreatedById` | `int` | FK → `Users.Id`, required |
+| `CreatedAt` | `datetime2` | Required |
 
-**Constraints:**
-- Message is required
-- TicketId is required and must reference existing ticket
-- CreatedById is required and must reference existing user
+**Navigation properties:**
+- `Ticket` → `Ticket` (required)
+- `CreatedBy` → `User` (required)
+
+**Business rules (implemented in `CommentService`):**
+- `Message` is trimmed on create.
+- `TicketId` and `CreatedById` must reference existing records.
+- Comments are append-only (no update/delete endpoints in Core).
+- `CreatedAt` is set to UTC now on create.
+
+**Delete behaviors:**
+- `Ticket` FK: `Cascade` (comments removed with ticket)
+- `CreatedBy` FK: `Restrict`
 
 ---
 
@@ -80,14 +111,11 @@
 │────────────│
 │ Id (PK)    │
 │ Name       │◄────────┐
-│ Email      │         │
+│ Email (UK) │         │
 │ Role       │         │
 └────────────┘         │
       ▲                │
-      │                │
-      │                │
-      │ CreatedBy      │ AssignedTo
-      │                │
+      │ CreatedBy      │ AssignedTo (nullable)
       │                │
 ┌─────┴──────┐         │
 │   Ticket   │◄────────┘
@@ -96,15 +124,14 @@
 │ Title      │
 │ Description│
 │ Priority   │
-│ Status     │──────── State Machine Enforced
+│ Status     │──────── State machine enforced (TicketStateMachine)
 │ AssignedTo │
 │ CreatedBy  │
 │ CreatedAt  │
 │ UpdatedAt  │
 └────────────┘
       ▲
-      │
-      │ TicketId
+      │ TicketId (cascade delete)
       │
 ┌─────┴──────┐
 │  Comment   │
@@ -121,14 +148,19 @@
 
 ## State Machine Rules
 
-### Status Enum Values
-- `Open`: Initial state for new tickets
-- `InProgress`: Ticket is being worked on
-- `Resolved`: Issue has been fixed but not yet closed
-- `Closed`: Ticket is completed and closed (terminal state)
-- `Cancelled`: Ticket was cancelled without resolution (terminal state)
+Implemented in `TicketStateMachine` (`src/TicketSystem.Api/Services/TicketStateMachine.cs`). All status changes via `PUT /api/tickets/{id}/status` call `ValidateTransition`, which throws `InvalidTransitionException` on invalid moves.
 
-### Valid Transitions
+### Status values
+
+| Status | Description |
+|--------|-------------|
+| `Open` | Initial state for new tickets |
+| `InProgress` | Actively being worked |
+| `Resolved` | Fix applied, awaiting closure |
+| `Closed` | Terminal — completed |
+| `Cancelled` | Terminal — abandoned |
+
+### Transition diagram
 
 ```
           ┌─────────┐
@@ -138,137 +170,95 @@
       ┌────────┴────────┐
       │                 │
       ▼                 ▼
-┌─────────┐       ┌───────────┐
-│Cancelled│       │InProgress │
-└─────────┘       └─────┬─────┘
- (Terminal)             │
-                   ┌────┴────┐
-                   │         │
-                   ▼         ▼
-              ┌─────────┐  ┌─────────┐
-              │Resolved │  │Cancelled│
-              └────┬────┘  └─────────┘
-                   │        (Terminal)
-                   ▼
-              ┌─────────┐
-              │ Closed  │
-              └─────────┘
-               (Terminal)
+┌───────────┐     ┌─────────┐
+│ Cancelled │     │InProgress│
+└───────────┘     └────┬────┘
+  (terminal)           │
+                 ┌─────┴─────┐
+                 │           │
+                 ▼           ▼
+            ┌─────────┐  ┌───────────┐
+            │Resolved │  │ Cancelled │
+            └────┬────┘  └───────────┘
+                 │         (terminal)
+                 ▼
+            ┌─────────┐
+            │ Closed  │
+            └─────────┘
+             (terminal)
 ```
 
-**Allowed Transitions:**
-- Open → InProgress
-- Open → Cancelled
-- InProgress → Resolved
-- InProgress → Cancelled
-- Resolved → Closed
+### Allowed transitions
 
-**Invalid Transitions (Examples):**
-- Open → Resolved (must go through InProgress)
-- Open → Closed (must go through InProgress and Resolved)
-- Resolved → InProgress (cannot reopen resolved tickets)
-- Closed → Any (terminal state)
-- Cancelled → Any (terminal state)
+| From | To |
+|------|-----|
+| `Open` | `InProgress`, `Cancelled` |
+| `InProgress` | `Resolved`, `Cancelled` |
+| `Resolved` | `Closed` |
+| `Closed` | *(none)* |
+| `Cancelled` | *(none)* |
 
-### Business Rules
+### Enforcement points
 
-1. **New tickets start as Open**
-   - When a ticket is created, status is automatically set to "Open"
-
-2. **Terminal states cannot transition**
-   - Once a ticket reaches "Closed" or "Cancelled", no further status changes are allowed
-
-3. **Only valid transitions are allowed**
-   - API must enforce state machine rules
-   - Backend validation prevents invalid transitions
-   - Frontend should only show valid transition buttons
-
-4. **Status changes update UpdatedAt**
-   - Any status change automatically updates the UpdatedAt timestamp
+1. **API:** `TicketService.ChangeStatusAsync` → `ITicketStateMachine.ValidateTransition`
+2. **UI:** `TicketWorkflowService` mirrors rules for enabling/disabling transition buttons (presentation only; API is authoritative)
+3. **Tests:** 16 integration tests in `StateMachineTransitionTests` cover all valid and required invalid transitions
 
 ---
 
-## Database Indexes
+## Database Indexes and Constraints
 
-### Primary Keys
-- User.Id (clustered)
-- Ticket.Id (clustered)
-- Comment.Id (clustered)
+### Primary keys
+- `Users.Id`, `Tickets.Id`, `Comments.Id` (clustered, identity)
 
-### Foreign Keys (Automatically indexed by SQL Server)
-- Ticket.AssignedToId → User.Id
-- Ticket.CreatedById → User.Id
-- Comment.TicketId → Ticket.Id
-- Comment.CreatedById → User.Id
+### Unique constraints
+- `Users.Email` (unique index via Fluent API)
 
-### Unique Constraints
-- User.Email (unique)
+### Foreign keys (SQL Server indexes FK columns automatically)
+- `Tickets.AssignedToId` → `Users.Id`
+- `Tickets.CreatedById` → `Users.Id`
+- `Comments.TicketId` → `Tickets.Id`
+- `Comments.CreatedById` → `Users.Id`
 
-### Recommended Indexes (Optional for Core)
-- Ticket.Status (for filter queries)
-- Ticket.CreatedAt (for sorting)
-- Comment.TicketId (if not automatically indexed)
-
----
-
-## Data Types and Validation
-
-### String Length Constraints
-| Field | Max Length | Reason |
-|-------|------------|--------|
-| User.Name | 200 | Reasonable name length |
-| User.Email | 320 | RFC 5321 max email length |
-| User.Role | 50 | Enum values |
-| Ticket.Title | 200 | Brief summary |
-| Ticket.Description | 5000 | Detailed explanation |
-| Ticket.Priority | 50 | Enum values |
-| Ticket.Status | 50 | Enum values |
-| Comment.Message | 2000 | Substantial comment |
-
-### Enum Values
-
-**Priority:**
-- Low
-- Medium
-- High
-- Critical
-
-**Status:**
-- Open
-- InProgress
-- Resolved
-- Closed
-- Cancelled
-
-**Role:**
-- Admin
-- Agent
-- User
+### Additional indexes
+No custom indexes beyond the unique email constraint. List queries order by `Ticket.CreatedAt` descending; status/keyword filters use in-memory predicate evaluation via LINQ `Where`.
 
 ---
 
 ## Seed Data
 
-### Sample Users
-```json
-[
-  {
-    "Id": 1,
-    "Name": "Admin User",
-    "Email": "admin@ticketsystem.com",
-    "Role": "Admin"
-  },
-  {
-    "Id": 2,
-    "Name": "Support Agent",
-    "Email": "agent@ticketsystem.com",
-    "Role": "Agent"
-  },
-  {
-    "Id": 3,
-    "Name": "Regular User",
-    "Email": "user@ticketsystem.com",
-    "Role": "User"
-  }
-]
-```
+Five users are seeded via `HasData` in `AppDbContext.OnModelCreating` (migration `InitialCreate`):
+
+| Id | Name | Email | Role |
+|----|------|-------|------|
+| 1 | Admin User | admin@ticketsystem.com | Admin |
+| 2 | Support Agent | agent@ticketsystem.com | Agent |
+| 3 | Regular User | user@ticketsystem.com | User |
+| 4 | Jane Smith | jane.smith@ticketsystem.com | Agent |
+| 5 | Bob Johnson | bob.johnson@ticketsystem.com | User |
+
+Tickets and comments are not seeded; they are created at runtime via the API or UI.
+
+---
+
+## DTO Mapping (API layer)
+
+Entities are not returned directly. Services map to DTOs:
+
+| DTO | Used for |
+|-----|----------|
+| `TicketResponseDto` | Ticket list, detail, create, update, status change |
+| `CreateTicketDto` | `POST /api/tickets` |
+| `UpdateTicketDto` | `PUT /api/tickets/{id}` |
+| `ChangeTicketStatusDto` | `PUT /api/tickets/{id}/status` |
+| `CommentResponseDto` | Comment list and create |
+| `CreateCommentDto` | `POST /api/tickets/{ticketId}/comments` |
+| `UserResponseDto` | User list and detail |
+
+`TicketResponseDto` includes denormalized `AssignedToName` and `CreatedByName` for display. Comments are included only on `GET /api/tickets/{id}`, not on the list endpoint.
+
+---
+
+## Test Database
+
+Integration tests (`TicketSystem.Tests`) use **in-memory SQLite** via `CustomWebApplicationFactory` when `ASPNETCORE_ENVIRONMENT=Testing`. `Program.cs` skips SQL Server registration in that environment; the factory registers `UseSqlite` instead. Schema is created with `EnsureCreatedAsync()`; tickets/comments are reset between tests while seeded users remain.
