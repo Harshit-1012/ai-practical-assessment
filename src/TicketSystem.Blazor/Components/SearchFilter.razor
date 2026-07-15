@@ -15,7 +15,7 @@
     </div>
     <div class="search-filter__field">
         <label class="form-label" for="status">Status</label>
-        <select id="status" class="form-select" @bind="status" @bind:after="ApplyFilter">
+        <select id="status" class="form-select" value="@status" @onchange="OnStatusChanged">
             @foreach (var option in DisplayService.GetStatusFilterOptions())
             {
                 <option value="@option.Value">@option.Label</option>
@@ -40,6 +40,12 @@
 
     private async Task ApplyFilter() =>
         await OnSearch.InvokeAsync(new TicketSearchCriteria { Keyword = keyword, Status = status });
+
+    private async Task OnStatusChanged(ChangeEventArgs e)
+    {
+        status = e.Value?.ToString() ?? "All";
+        await ApplyFilter();
+    }
 
     private async Task HandleKeyDown(KeyboardEventArgs args)
     {

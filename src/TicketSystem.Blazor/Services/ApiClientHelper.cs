@@ -7,6 +7,8 @@ namespace TicketSystem.Blazor.Services;
 
 public class ApiClientHelper
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly HttpClient _httpClient;
 
     public ApiClientHelper(HttpClient httpClient)
@@ -18,21 +20,21 @@ public class ApiClientHelper
     {
         var response = await _httpClient.GetAsync(uri, cancellationToken);
         await EnsureSuccessAsync(response);
-        return (await response.Content.ReadFromJsonAsync<T>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken))!;
     }
 
     public async Task<T> PostAsync<T>(string uri, object body, CancellationToken cancellationToken = default)
     {
         var response = await _httpClient.PostAsJsonAsync(uri, body, cancellationToken);
         await EnsureSuccessAsync(response);
-        return (await response.Content.ReadFromJsonAsync<T>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken))!;
     }
 
     public async Task<T> PutAsync<T>(string uri, object body, CancellationToken cancellationToken = default)
     {
         var response = await _httpClient.PutAsJsonAsync(uri, body, cancellationToken);
         await EnsureSuccessAsync(response);
-        return (await response.Content.ReadFromJsonAsync<T>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken))!;
     }
 
     public async Task EnsureSuccessAsync(HttpResponseMessage response)

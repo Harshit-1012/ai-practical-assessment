@@ -8,7 +8,17 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5041";
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+if (!apiBaseUrl.EndsWith('/'))
+{
+    apiBaseUrl += "/";
+}
+
+builder.Services.AddScoped(_ =>
+{
+    var client = new HttpClient { BaseAddress = new Uri(apiBaseUrl) };
+    client.Timeout = TimeSpan.FromSeconds(30);
+    return client;
+});
 
 builder.Services.AddScoped<ApiClientHelper>();
 builder.Services.AddScoped<ITicketApiService, TicketApiService>();

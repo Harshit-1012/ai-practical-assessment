@@ -94,6 +94,11 @@
             errorMessage = ex.Message;
             Notifications.ShowError(ex.Message);
         }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to reach the API at the configured base URL. Ensure TicketSystem.Api is running on http://localhost:5041. ({ex.Message})";
+            Notifications.ShowError(errorMessage);
+        }
         finally
         {
             isLoading = false;
