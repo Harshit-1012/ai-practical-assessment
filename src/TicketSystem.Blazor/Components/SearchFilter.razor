@@ -1,0 +1,51 @@
+@inject ITicketDisplayService DisplayService
+
+<div class="search-filter">
+    <div class="search-filter__field">
+        <label class="form-label" for="keyword">Search</label>
+        <div class="search-filter__input-group">
+            <input id="keyword"
+                   class="form-control"
+                   placeholder="Search title or description..."
+                   @bind="keyword"
+                   @bind:event="oninput"
+                   @onkeydown="HandleKeyDown" />
+            <button type="button" class="btn btn-primary" @onclick="ApplyFilter">Search</button>
+        </div>
+    </div>
+    <div class="search-filter__field">
+        <label class="form-label" for="status">Status</label>
+        <select id="status" class="form-select" @bind="status" @bind:after="ApplyFilter">
+            @foreach (var option in DisplayService.GetStatusFilterOptions())
+            {
+                <option value="@option.Value">@option.Label</option>
+            }
+        </select>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? InitialKeyword { get; set; }
+    [Parameter] public string? InitialStatus { get; set; }
+    [Parameter] public EventCallback<TicketSearchCriteria> OnSearch { get; set; }
+
+    private string keyword = string.Empty;
+    private string status = "All";
+
+    protected override void OnParametersSet()
+    {
+        keyword = InitialKeyword ?? string.Empty;
+        status = string.IsNullOrWhiteSpace(InitialStatus) ? "All" : InitialStatus;
+    }
+
+    private async Task ApplyFilter() =>
+        await OnSearch.InvokeAsync(new TicketSearchCriteria { Keyword = keyword, Status = status });
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await ApplyFilter();
+        }
+    }
+}

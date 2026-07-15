@@ -1,0 +1,58 @@
+<EditForm Model="model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <div class="add-comment">
+        <label class="form-label" for="commentMessage">Add a comment</label>
+        <InputTextArea id="commentMessage" class="form-control" rows="3" @bind-Value="model.Message" disabled="@IsSubmitting" />
+        <ValidationMessage For="() => model.Message" />
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <div class="alert alert-error">@ErrorMessage</div>
+        }
+        <div class="add-comment__actions">
+            <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
+                @(IsSubmitting ? "Posting..." : "Post Comment")
+            </button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+    [Parameter] public int DefaultUserId { get; set; } = 3;
+    [Parameter] public EventCallback OnCommentAdded { get; set; }
+
+    [Inject] private ICommentApiService CommentService { get; set; } = default!;
+    [Inject] private INotificationService Notifications { get; set; } = default!;
+
+    private readonly CreateCommentRequest model = new();
+    private bool IsSubmitting;
+    private string? ErrorMessage;
+
+    protected override void OnParametersSet()
+    {
+        model.CreatedById = DefaultUserId;
+    }
+
+    private async Task HandleSubmit()
+    {
+        IsSubmitting = true;
+        ErrorMessage = null;
+
+        try
+        {
+            await CommentService.CreateCommentAsync(TicketId, model);
+            model.Message = string.Empty;
+            Notifications.ShowSuccess("Comment added.");
+            await OnCommentAdded.InvokeAsync();
+        }
+        catch (ApiClientException ex)
+        {
+            ErrorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+}

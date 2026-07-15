@@ -1,0 +1,129 @@
+@page "/tickets/{TicketId:int}/edit"
+@inject ITicketApiService TicketService
+@inject IUserApiService UserService
+@inject ITicketDisplayService DisplayService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Ticket</PageTitle>
+
+<LoadingSpinner IsLoading="isLoading" Message="Loading ticket..." />
+
+@if (!isLoading && ticket is not null)
+{
+    <div class="page-header">
+        <div>
+            <h1>Edit Ticket #@ticket.Id</h1>
+            <p class="page-subtitle">@ticket.Title</p>
+        </div>
+    </div>
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label class="form-label" for="title">Title</label>
+            <InputText id="title" class="form-control" @bind-Value="model.Title" />
+            <ValidationMessage For="() => model.Title" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="description">Description</label>
+            <InputTextArea id="description" class="form-control" rows="5" @bind-Value="model.Description" />
+            <ValidationMessage For="() => model.Description" />
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="priority">Priority</label>
+                <InputSelect id="priority" class="form-select" @bind-Value="model.Priority">
+                    @foreach (var priority in DisplayService.GetPriorityOptions())
+                    {
+                        <option value="@priority">@priority</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="assignee">Assign To</label>
+                <InputSelect id="assignee" class="form-select" @bind-Value="assignedToSelection">
+                    <option value="">Unassigned</option>
+                    @foreach (var user in users)
+                    {
+                        <option value="@user.Id">@user.Name (@user.Role)</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}"))">Cancel</button>
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @(isSubmitting ? "Saving..." : "Save Changes")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+
+    private readonly UpdateTicketRequest model = new();
+    private readonly List<UserDto> users = [];
+    private TicketDto? ticket;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? errorMessage;
+    private string assignedToSelection = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users.AddRange(await UserService.GetUsersAsync());
+            ticket = await TicketService.GetTicketByIdAsync(TicketId);
+            model.Title = ticket.Title;
+            model.Description = ticket.Description;
+            model.Priority = ticket.Priority;
+            model.AssignedToId = ticket.AssignedToId;
+            assignedToSelection = ticket.AssignedToId?.ToString() ?? string.Empty;
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        model.AssignedToId = string.IsNullOrWhiteSpace(assignedToSelection) ? null : int.Parse(assignedToSelection);
+
+        try
+        {
+            await TicketService.UpdateTicketAsync(TicketId, model);
+            Notifications.ShowSuccess("Ticket updated.");
+            Navigation.NavigateTo($"/tickets/{TicketId}");
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

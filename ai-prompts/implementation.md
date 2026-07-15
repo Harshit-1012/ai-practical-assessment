@@ -47,7 +47,110 @@ Document all AI prompts used during implementation (backend, frontend, database,
 
 [Document each implementation prompt]
 
-### Prompt #1: [Title]
-[Details]
+### Prompt #1: Backend API Implementation (Phase 5)
 
-[Continue...]
+**Date:** 2026-07-14
+**Context Provided:** implementation-plan.md (Phase 5), spec.md
+
+**Prompt:**
+Execute Phase 5: DTOs, TicketStateMachine, TicketService, CommentService,
+controllers, validation, exception handling.
+
+**AI Response Summary:**
+State machine with 5 valid transitions and terminal state enforcement; 
+Ticket/Comment/User services; controllers; DTO validation; global 
+exception middleware.
+
+**What Was Accepted:**
+- State machine logic, controller/service structure
+
+**What Was Changed:**
+- Added Swagger/Swashbuckle manually since .NET 9 default template only 
+  provides raw OpenAPI JSON, not interactive Swagger UI
+
+**What Was Rejected:**
+- None
+
+**Iteration Count:** 2 (initial implementation + Swagger addition)
+
+**Outcome:** Manually verified via Swagger — user list, ticket creation, 
+ticket retrieval, comment creation, and validation error handling all 
+working correctly.
+
+### Prompt #2: Add Swagger/OpenAPI Support
+
+**Date:** 2026-07-15
+**Context Provided:** Working Phase 5 backend (raw OpenAPI JSON only, no UI)
+
+**Prompt:**
+Add Swagger/OpenAPI support (Swashbuckle) to TicketSystem.Api and enable it in the dev environment.
+
+**AI Response Summary:**
+Added Swashbuckle package and enabled interactive Swagger UI at /swagger, 
+since .NET 9's default template only provides raw /openapi/v1.json.
+
+**What Was Accepted:** Added as-is
+**What Was Changed:** None
+**What Was Rejected:** None
+**Iteration Count:** 1
+**Outcome:** Swagger UI available for manual API testing
+
+---
+
+### Prompt #3: Frontend Implementation (Phase 6)
+
+**Date:** 2026-07-15
+**Context Provided:** implementation-plan.md (Phase 6), completed backend API
+
+**Prompt:**
+```
+Execute Phase 6 from implementation-plan.md: create the Blazor 
+WebAssembly frontend for the ticket system, with a clean, modern, 
+professional UI — not a generic Bootstrap default look.
+
+Design direction:
+- Use a cohesive color palette (e.g., a primary accent color + neutral 
+  grays), not default Bootstrap blue
+- Distinct, colored badges for Status (Open/InProgress/Resolved/Closed/
+  Cancelled) and Priority (Low/Medium/High/Critical) — each status/
+  priority should have its own recognizable color
+- Card-based layout for the ticket list (not a plain table) with subtle 
+  shadows and hover states
+- Clean typography with proper spacing/hierarchy
+- A simple top navbar or sidebar with the app name/logo
+- Empty states with helpful messaging, loading states with spinner
+- Toast/inline notifications for success and error states
+- Disabled/grayed-out buttons for invalid status transitions, with a 
+  tooltip explaining why
+
+Architecture constraint: Keep all business logic (validation, state 
+transition rules, data formatting/decisions) in the Services layer or 
+API responses — NOT in the Razor components. Components should only 
+handle rendering, input binding, and calling the API service layer.
+
+Build:
+- TicketApiService and CommentApiService (HTTP client services)
+- TicketList.razor, TicketDetail.razor, CreateTicket.razor, 
+  EditTicket.razor
+- Reusable components: StatusBadge, PriorityBadge, CommentList, 
+  AddComment, SearchFilter
+- Remove default Counter/Weather template pages
+
+Stop after this so I can review.
+```
+
+**AI Response Summary:**
+Built TicketApiService/CommentApiService/UserApiService for HTTP calls; 
+TicketWorkflowService for transition rules; TicketDisplayService for 
+badge/label/formatting logic; NotificationService for toasts. Pages: 
+TicketList, TicketDetail, CreateTicket, EditTicket. Custom theme (Inter 
+font, indigo/slate palette), no Bootstrap dependency. Removed default 
+Counter/Weather/Home template pages.
+
+**What Was Accepted:** Full architecture and UI design as delivered — 
+logic correctly separated into services layer per constraint
+**What Was Changed:** [Manual review ke baad yahan likho]
+**What Was Rejected:** None
+**Iteration Count:** 1
+**Outcome:** Frontend builds with 0 warnings, 0 errors — ready for 
+manual review

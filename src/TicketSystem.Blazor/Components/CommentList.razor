@@ -1,0 +1,28 @@
+@inject ITicketDisplayService DisplayService
+
+@if (Comments.Count == 0)
+{
+    <div class="empty-state empty-state--compact">
+        <p>No comments yet. Be the first to add an update.</p>
+    </div>
+}
+else
+{
+    <div class="comment-list">
+        @foreach (var comment in Comments)
+        {
+            <article class="comment-card">
+                <header class="comment-card__header">
+                    <strong>@comment.CreatedByName</strong>
+                    <time datetime="@comment.CreatedAt.ToString("O")">@DisplayService.FormatDateTime(comment.CreatedAt)</time>
+                </header>
+                <p class="comment-card__body">@comment.Message</p>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<CommentDto> Comments { get; set; } = [];
+}

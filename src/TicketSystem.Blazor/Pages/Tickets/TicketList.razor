@@ -1,0 +1,102 @@
+@page "/tickets"
+@inject ITicketApiService TicketService
+@inject ITicketDisplayService DisplayService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Tickets</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Support Tickets</h1>
+        <p class="page-subtitle">Track, search, and manage support requests</p>
+    </div>
+    <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets/create"))">
+        + New Ticket
+    </button>
+</div>
+
+<SearchFilter OnSearch="HandleSearch" InitialKeyword="@currentKeyword" InitialStatus="@currentStatus" />
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-error">@errorMessage</div>
+}
+
+<LoadingSpinner IsLoading="isLoading" Message="Loading tickets..." />
+
+@if (!isLoading)
+{
+    if (tickets.Count == 0)
+    {
+        <EmptyState Title="No tickets found"
+                    Description="Try adjusting your search or create a new support ticket."
+                    Icon="📋">
+            <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets/create"))">
+                Create Ticket
+            </button>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="ticket-grid">
+            @foreach (var ticket in tickets)
+            {
+                <article class="ticket-card" @onclick="@(() => Navigation.NavigateTo($"/tickets/{ticket.Id}"))" role="button" tabindex="0">
+                    <div class="ticket-card__header">
+                        <span class="ticket-card__id">#@ticket.Id</span>
+                        <div class="ticket-card__badges">
+                            <StatusBadge Status="@ticket.Status" />
+                            <PriorityBadge Priority="@ticket.Priority" />
+                        </div>
+                    </div>
+                    <h2 class="ticket-card__title">@ticket.Title</h2>
+                    <p class="ticket-card__description">@ticket.Description</p>
+                    <footer class="ticket-card__footer">
+                        <span>@DisplayService.GetAssigneeDisplay(ticket.AssignedToName)</span>
+                        <span>@DisplayService.FormatRelativeDate(ticket.CreatedAt)</span>
+                    </footer>
+                </article>
+            }
+        </div>
+    }
+}
+
+@code {
+    private readonly List<TicketDto> tickets = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? currentKeyword;
+    private string? currentStatus;
+
+    protected override async Task OnInitializedAsync() => await LoadTicketsAsync();
+
+    private async Task HandleSearch(TicketSearchCriteria criteria)
+    {
+        currentKeyword = criteria.Keyword;
+        currentStatus = criteria.Status;
+        await LoadTicketsAsync(criteria);
+    }
+
+    private async Task LoadTicketsAsync(TicketSearchCriteria? criteria = null)
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var results = await TicketService.GetTicketsAsync(criteria);
+            tickets.Clear();
+            tickets.AddRange(results);
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

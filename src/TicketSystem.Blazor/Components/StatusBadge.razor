@@ -1,0 +1,8 @@
+@inject ITicketDisplayService DisplayService
+
+<span class="@DisplayService.GetStatusBadgeClass(Status)">@DisplayService.GetStatusLabel(Status)</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = string.Empty;
+}

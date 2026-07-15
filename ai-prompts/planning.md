@@ -75,12 +75,100 @@ core features vs. stretch features. Listed state machine transitions.
 
 ## Prompts Log
 
-[Document each planning prompt using the template above]
 
-### Prompt #1: [Title]
-[Details]
 
-### Prompt #2: [Title]
-[Details]
+### Prompt #1: Project Setup + Cursor Context (Phase 1 & 2)
 
-[Continue...]
+**Date:** 2026-07-14
+**Phase:** Planning/Setup
+**Context Provided:** implementation-plan.md (11-phase plan)
+
+**Prompt:** Execute Phase 1 (Project Setup) and Phase 2 (Cursor Setup) from
+implementation-plan.md. Create the .NET solution with 3 projects, the
+full assessment folder structure, and the Cursor context files.
+
+**AI Response Summary:**
+Created TicketSystem.Api, TicketSystem.Blazor, TicketSystem.Tests 
+projects; full folder/file skeleton (31 files); .cursorrules; 
+tool-specific/cursor-workflow/ files.
+
+**What Was Accepted:**
+- Solution structure and all 3 projects
+- Full documentation folder skeleton
+
+**What Was Changed:**
+- spec.md was created at project root instead of 
+  tool-specific/cursor-workflow/ — asked Cursor to move it to the 
+  correct location
+
+**What Was Rejected:**
+- None
+
+**Iteration Count:** 2
+**Outcome:** Working solution + complete repo skeleton, git initialized 
+and first commit made
+
+---
+
+### Prompt #2: Implementation Plan Generation
+
+**Date:** 2026-07-14
+**Phase:** Planning
+**Context Provided:** spec.md, earlier Plan-mode phase breakdown
+
+**Prompt:**
+Using spec.md and the plan file as reference, create
+implementation-plan.md with: Overview, Task Breakdown, Milestones,
+AI Usage Plan, Risks, Mitigation.
+
+**AI Response Summary:**
+Generated full 11-phase plan with day-wise milestones, AI usage strategy 
+per lifecycle phase, and a 10-item risk/mitigation table.
+
+**What Was Accepted:**
+- Overall 11-phase structure and sequencing
+- Risk/mitigation table
+
+**What Was Changed:**
+- Corrected an error stating documentation alone was 60% of evaluation 
+  (spec actually weights Part B — full project + artifacts — at 60%)
+- Updated project location path to match actual working directory
+
+**What Was Rejected:**
+- None
+
+**Iteration Count:** 2
+**Outcome:** Finalized implementation-plan.md
+
+---
+
+### Prompt #3: Requirements Analysis Template
+
+**Date:** 2026-07-14
+**Phase:** Requirements Analysis
+**Context Provided:** spec.md
+
+**Prompt:** Create requirements-analysis.md with Functional/Non-Functional
+Requirements and Edge Cases pre-filled based on the spec, leaving
+Understanding/Assumptions/Clarifications empty for me to fill personally.
+
+**AI Response Summary:**
+Structured template with detailed Functional/Non-Functional Requirements 
+and Edge Cases broken down by category (state machine, validation, 
+search, database).
+
+**What Was Accepted:**
+- Functional and Non-Functional Requirements sections as-is
+- Edge Cases categorization
+
+**What Was Changed:**
+- N/A (AI-generated sections kept as-is)
+
+**What Was Rejected:**
+- None
+
+**Iteration Count:** 1
+**Outcome:** Requirements-analysis.md template created; My Understanding, 
+Assumptions, and Clarifications written personally afterward (not 
+AI-generated)
+

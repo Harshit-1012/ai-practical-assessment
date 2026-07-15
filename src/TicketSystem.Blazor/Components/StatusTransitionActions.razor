@@ -1,0 +1,22 @@
+<div class="transition-actions">
+    <h4 class="transition-actions__title">Change Status</h4>
+    <div class="transition-actions__buttons">
+        @foreach (var action in Actions)
+        {
+            <span class="transition-actions__item" title="@action.DisabledReason">
+                <button type="button"
+                        class="@action.ButtonClass"
+                        disabled="@(!action.IsEnabled || IsBusy)"
+                        @onclick="() => OnTransitionRequested.InvokeAsync(action.TargetStatus)">
+                    @action.Label
+                </button>
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<StatusTransitionAction> Actions { get; set; } = [];
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback<string> OnTransitionRequested { get; set; }
+}

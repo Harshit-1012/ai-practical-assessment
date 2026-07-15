@@ -1,0 +1,22 @@
+<div class="empty-state">
+    @if (!string.IsNullOrWhiteSpace(Icon))
+    {
+        <div class="empty-state__icon" aria-hidden="true">@Icon</div>
+    }
+    <h3>@Title</h3>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <p>@Description</p>
+    }
+    @if (ChildContent is not null)
+    {
+        <div class="empty-state__actions">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

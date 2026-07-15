@@ -1,0 +1,8 @@
+@inject ITicketDisplayService DisplayService
+
+<span class="@DisplayService.GetPriorityBadgeClass(Priority)">@DisplayService.GetPriorityLabel(Priority)</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Priority { get; set; } = string.Empty;
+}

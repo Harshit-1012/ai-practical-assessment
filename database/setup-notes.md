@@ -200,9 +200,69 @@ Seed data is configured in: `src/TicketSystem.Api/Data/AppDbContext.cs` or via m
 
 **Expected Result:** ✓ Ticket persists across restarts
 
-**Test Date:** [Date performed]  
-**Test Result:** [PASS/FAIL]  
-**Notes:** [Any observations]
+**Test Date:** 2026-07-15  
+**Test Result:** PASS  
+**Environment:** Windows, SQL Server LocalDB, .NET 9, API at `http://localhost:5041`
+
+#### Test Procedure Performed
+
+1. **Applied migrations** (database already up to date):
+   ```bash
+   cd src/TicketSystem.Api
+   dotnet ef database update
+   ```
+
+2. **Started the API:**
+   ```bash
+   dotnet run --launch-profile http
+   ```
+
+3. **Created a test ticket** via `POST /api/tickets`:
+   ```powershell
+   $body = @{
+     title = "Persistence verification test ticket"
+     description = "Created to verify data survives API restart"
+     priority = "Medium"
+     assignedToId = 2
+     createdById = 3
+   } | ConvertTo-Json
+
+   Invoke-RestMethod -Uri "http://localhost:5041/api/tickets" `
+     -Method Post -Body $body -ContentType "application/json"
+   ```
+
+   **Response (201 Created):**
+   - Ticket ID: **3**
+   - Title: Persistence verification test ticket
+   - Status: Open
+   - CreatedAt: 2026-07-15T03:47:19.1505525Z
+
+4. **Stopped the API** (terminated running `TicketSystem.Api` process)
+
+5. **Restarted the API:**
+   ```bash
+   dotnet run --launch-profile http
+   ```
+
+6. **Retrieved the ticket** via `GET /api/tickets/3`:
+   ```powershell
+   Invoke-RestMethod -Uri "http://localhost:5041/api/tickets/3" -Method Get
+   ```
+
+   **Response (200 OK):** Ticket ID 3 returned with identical data:
+   - Title: Persistence verification test ticket
+   - Description: Created to verify data survives API restart
+   - Priority: Medium
+   - Status: Open
+   - AssignedToId: 2 (Support Agent)
+   - CreatedById: 3 (Regular User)
+   - CreatedAt: 2026-07-15T03:47:19.1505525Z (unchanged)
+
+#### Conclusion
+
+Data persisted correctly in SQL Server LocalDB across an API stop/restart cycle. The ticket created before shutdown was fully retrievable with the same field values after restart.
+
+**Notes:** This confirms EF Core is writing to the persistent LocalDB database (`TicketSystemDb`), not an in-memory store. Migrations and seed users were already applied prior to this test.
 
 ---
 
@@ -428,7 +488,7 @@ WITH REPLACE;
 
 ---
 
-**Setup Documentation By:** [Your Name]  
-**Date:** [Date]  
-**Last Updated:** [Date]  
-**Verified:** [YES/NO]
+**Setup Documentation By:** Assessment project  
+**Date:** 2026-07-14  
+**Last Updated:** 2026-07-15  
+**Verified:** YES (persistence test passed 2026-07-15)

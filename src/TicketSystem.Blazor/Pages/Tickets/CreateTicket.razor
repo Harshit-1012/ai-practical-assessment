@@ -1,0 +1,132 @@
+@page "/tickets/create"
+@inject ITicketApiService TicketService
+@inject IUserApiService UserService
+@inject ITicketDisplayService DisplayService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Create Ticket</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Create Ticket</h1>
+        <p class="page-subtitle">Report a new support issue</p>
+    </div>
+</div>
+
+<LoadingSpinner IsLoading="isLoadingUsers" Message="Loading form..." />
+
+@if (!isLoadingUsers)
+{
+    <EditForm Model="model" OnValidSubmit="HandleSubmit" class="form-card">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label class="form-label" for="title">Title</label>
+            <InputText id="title" class="form-control" @bind-Value="model.Title" />
+            <ValidationMessage For="() => model.Title" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="description">Description</label>
+            <InputTextArea id="description" class="form-control" rows="5" @bind-Value="model.Description" />
+            <ValidationMessage For="() => model.Description" />
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="priority">Priority</label>
+                <InputSelect id="priority" class="form-select" @bind-Value="model.Priority">
+                    @foreach (var priority in DisplayService.GetPriorityOptions())
+                    {
+                        <option value="@priority">@priority</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => model.Priority" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="assignee">Assign To</label>
+                <InputSelect id="assignee" class="form-select" @bind-Value="assignedToSelection">
+                    <option value="">Unassigned</option>
+                    @foreach (var user in users)
+                    {
+                        <option value="@user.Id">@user.Name (@user.Role)</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="creator">Created By</label>
+            <InputSelect id="creator" class="form-select" @bind-Value="model.CreatedById">
+                @foreach (var user in users)
+                {
+                    <option value="@user.Id">@user.Name</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => model.CreatedById" />
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/tickets"))">Cancel</button>
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @(isSubmitting ? "Creating..." : "Create Ticket")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private readonly CreateTicketRequest model = new();
+    private readonly List<UserDto> users = [];
+    private bool isLoadingUsers = true;
+    private bool isSubmitting;
+    private string? errorMessage;
+    private string assignedToSelection = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users.AddRange(await UserService.GetUsersAsync());
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isLoadingUsers = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        model.AssignedToId = string.IsNullOrWhiteSpace(assignedToSelection) ? null : int.Parse(assignedToSelection);
+
+        try
+        {
+            var created = await TicketService.CreateTicketAsync(model);
+            Notifications.ShowSuccess("Ticket created successfully.");
+            Navigation.NavigateTo($"/tickets/{created.Id}");
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

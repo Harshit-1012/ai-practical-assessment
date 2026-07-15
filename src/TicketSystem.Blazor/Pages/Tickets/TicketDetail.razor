@@ -1,0 +1,123 @@
+@page "/tickets/{TicketId:int}"
+@inject ITicketApiService TicketService
+@inject ITicketWorkflowService WorkflowService
+@inject ITicketDisplayService DisplayService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Ticket Details</PageTitle>
+
+<LoadingSpinner IsLoading="isLoading" Message="Loading ticket..." />
+
+@if (!isLoading && ticket is not null)
+{
+    <div class="page-header">
+        <div>
+            <button type="button" class="btn btn-link" @onclick="@(() => Navigation.NavigateTo("/tickets"))">← Back to tickets</button>
+            <h1>@ticket.Title</h1>
+            <p class="page-subtitle">Ticket #@ticket.Id</p>
+        </div>
+        <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}/edit"))">
+            Edit
+        </button>
+    </div>
+
+    <div class="detail-layout">
+        <section class="detail-card">
+            <div class="detail-card__badges">
+                <StatusBadge Status="@ticket.Status" />
+                <PriorityBadge Priority="@ticket.Priority" />
+            </div>
+
+            <div class="detail-meta">
+                <div>
+                    <span class="detail-meta__label">Assigned to</span>
+                    <span>@DisplayService.GetAssigneeDisplay(ticket.AssignedToName)</span>
+                </div>
+                <div>
+                    <span class="detail-meta__label">Created by</span>
+                    <span>@ticket.CreatedByName</span>
+                </div>
+                <div>
+                    <span class="detail-meta__label">Created</span>
+                    <span>@DisplayService.FormatDateTime(ticket.CreatedAt)</span>
+                </div>
+                <div>
+                    <span class="detail-meta__label">Updated</span>
+                    <span>@DisplayService.FormatDateTime(ticket.UpdatedAt)</span>
+                </div>
+            </div>
+
+            <div class="detail-description">
+                <h3>Description</h3>
+                <p>@ticket.Description</p>
+            </div>
+        </section>
+
+        <aside class="detail-sidebar">
+            <div class="detail-card">
+                <StatusTransitionActions Actions="transitionActions"
+                                         IsBusy="isChangingStatus"
+                                         OnTransitionRequested="HandleStatusChange" />
+            </div>
+        </aside>
+    </div>
+
+    <section class="detail-card detail-card--comments">
+        <h3>Comments (@ticket.Comments.Count)</h3>
+        <CommentList Comments="ticket.Comments" />
+        <AddComment TicketId="TicketId" OnCommentAdded="ReloadTicketAsync" />
+    </section>
+}
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+
+    private TicketDto? ticket;
+    private IReadOnlyList<StatusTransitionAction> transitionActions = [];
+    private bool isLoading = true;
+    private bool isChangingStatus;
+
+    protected override async Task OnInitializedAsync() => await LoadTicketAsync();
+
+    private async Task LoadTicketAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            ticket = await TicketService.GetTicketByIdAsync(TicketId);
+            transitionActions = WorkflowService.GetTransitionActions(ticket.Status);
+        }
+        catch (ApiClientException ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ReloadTicketAsync() => await LoadTicketAsync();
+
+    private async Task HandleStatusChange(string newStatus)
+    {
+        isChangingStatus = true;
+
+        try
+        {
+            ticket = await TicketService.ChangeStatusAsync(TicketId, newStatus);
+            transitionActions = WorkflowService.GetTransitionActions(ticket.Status);
+            Notifications.ShowSuccess($"Status changed to {DisplayService.GetStatusLabel(newStatus)}.");
+        }
+        catch (ApiClientException ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isChangingStatus = false;
+        }
+    }
+}
