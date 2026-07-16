@@ -1,287 +1,296 @@
 # UI Flow
 
+This document describes the **implemented** Blazor WebAssembly UI (`TicketSystem.Blazor`). Routes, layouts, labels, and interaction patterns match the actual pages and components in the codebase.
+
+---
+
+## Application Shell
+
+All ticket pages render inside `MainLayout`:
+
+- **Left sidebar** (`NavMenu`): links to **All Tickets** (`/tickets`) and **New Ticket** (`/tickets/create`)
+- **Top bar**: "TicketDesk" branding with "Support Ticket Management" tagline
+- **Main content area**: page body
+- **Toast container** (`ToastContainer`): global success/error notifications via `NotificationService`
+
+**Entry route:** `/` (`Index.razor`) immediately redirects to `/tickets`.
+
+Styling uses a custom indigo/slate theme in `wwwroot/css/app.css` (not Bootstrap).
+
+---
+
 ## User Journeys
 
 ### Journey 1: Creating a New Ticket
 
-**Goal:** User wants to report an issue by creating a ticket
+**Goal:** Report a new support issue.
+
+**Entry points:**
+- Ticket list header: **+ New Ticket**
+- Sidebar: **New Ticket**
+- Empty state on ticket list: **Create Ticket**
 
 **Steps:**
-1. User navigates to the application home page (ticket list)
-2. User clicks "Create New Ticket" button
-3. System navigates to Create Ticket page
-4. User fills in the form:
-   - Enters ticket title (required)
-   - Enters detailed description (required)
-   - Selects priority from dropdown (Low, Medium, High, Critical)
-   - Optionally selects an agent to assign the ticket to
-5. User clicks "Submit" or "Create Ticket" button
-6. System validates the input:
-   - If validation fails: Display error messages inline
-   - If validation succeeds: Submit to API
-7. API creates the ticket with status "Open"
-8. System shows success message
-9. System navigates back to ticket list or shows ticket detail
-10. New ticket appears in the list
+1. User navigates to `/tickets/create`
+2. Page shows "Create Ticket" with subtitle "Report a new support issue"
+3. While users load from the API, a spinner displays ("Loading form...")
+4. User completes the form:
+   - **Title** (required, max 200 characters)
+   - **Description** (required, max 5000 characters)
+   - **Priority** (required dropdown: Low, Medium, High, Critical; defaults to **Medium**)
+   - **Assign To** (optional; "Unassigned" or a user shown as `Name (Role)`)
+   - **Created By** (required dropdown of all users; defaults to user id **3** in the model)
+5. User clicks **Create Ticket** (shows "Creating..." while submitting; button disabled during submit)
+6. Client-side validation runs via `DataAnnotationsValidator`; failures show inline `ValidationMessage` text
+7. On success:
+   - Toast: "Ticket created successfully."
+   - Navigation to **ticket detail** (`/tickets/{id}`) — not back to the list
+8. On API error: inline alert plus error toast; form data retained
 
-**Edge Cases:**
-- User leaves required fields empty → Show validation errors
-- User tries to submit while loading → Disable submit button
-- API error occurs → Show error message, keep form data
+**Cancel:** **Cancel** button navigates to `/tickets` without saving.
 
 ---
 
-### Journey 2: Viewing and Searching Tickets
+### Journey 2: Viewing, Searching, and Filtering Tickets
 
-**Goal:** User wants to find and view tickets
+**Goal:** Browse tickets and narrow results.
+
+**Route:** `/tickets`
 
 **Steps:**
-1. User navigates to ticket list page
-2. System displays all tickets in a table/card layout
-3. User can perform actions:
-   - **Search:** Enter keyword in search box, press Enter or click Search
-   - **Filter:** Select status from dropdown (All, Open, InProgress, Resolved, Closed, Cancelled)
-   - **View Details:** Click on a ticket to view full details
-4. System updates the list based on search/filter criteria
-5. If no tickets match: Display "No tickets found" message
+1. Page loads with header "Support Tickets" and subtitle "Track, search, and manage support requests"
+2. While tickets load, `LoadingSpinner` shows "Loading tickets..."
+3. Tickets render in a **responsive card grid** (not a table). Each card is clickable and navigates to `/tickets/{id}`.
+4. Each card shows:
+   - Ticket id (`#123`)
+   - Status and priority badges
+   - Title
+   - Description preview (clamped to **2 lines**)
+   - Footer: assignee (or "Unassigned") and **relative** created date (e.g. "2h ago", "Just now")
+5. **Search** (`SearchFilter` component):
+   - Keyword input with placeholder "Search title or description..."
+   - **Search** button applies the filter
+   - **Enter** in the keyword field also applies the filter
+   - Search is case-insensitive on title and description (API behavior)
+6. **Status filter** dropdown:
+   - Options: All Statuses, Open, In Progress, Resolved, Closed, Cancelled
+   - Changing the dropdown **immediately** re-queries the API (no separate Search click required)
+7. Search keyword and status filter can be combined
+8. If no tickets match: `EmptyState` with "No tickets found", guidance text, and a **Create Ticket** button
+9. On load failure: inline error alert and error toast (including a friendly message when the API is unreachable)
 
-**Search Behavior:**
-- Search is case-insensitive
-- Searches in both title and description fields
-- Can be combined with status filter
-- Empty search shows all tickets (respecting filter)
-
-**UI Elements:**
-- Search input box with search button
-- Status filter dropdown
-- Ticket cards/rows showing: ID, Title, Status badge, Priority badge, Assignee, Created date
-- Click anywhere on ticket card to view details
+**Note:** There is no pagination; the list shows all results returned by the API for the current criteria.
 
 ---
 
 ### Journey 3: Viewing Ticket Details and Comments
 
-**Goal:** User wants to see full ticket information and conversation history
+**Goal:** See full ticket metadata, change status, and read/post comments.
+
+**Route:** `/tickets/{TicketId}`
 
 **Steps:**
-1. User clicks on a ticket from the list
-2. System navigates to Ticket Detail page
-3. System displays:
-   - **Ticket Header:**
-     - Ticket ID and Title
-     - Status badge (color-coded)
-     - Priority badge (color-coded)
-     - Edit button
-   - **Ticket Body:**
-     - Full description
-     - Assigned to: Agent name (or "Unassigned")
-     - Created by: User name
-     - Created at: Timestamp
-     - Updated at: Timestamp
-   - **Status Transitions:**
-     - Buttons for valid status transitions only
-     - Example: If status is "Open", show "Start Progress" and "Cancel" buttons
-   - **Comments Section:**
-     - List of all comments in chronological order
-     - Each comment shows: Author name, message, timestamp
-     - Add comment form at bottom
-4. User can perform actions:
-   - Change status (see Journey 4)
-   - Add comment (see Journey 5)
-   - Edit ticket (click Edit button)
-   - Navigate back to list
+1. User opens a ticket from the list (or lands here after create)
+2. While loading, spinner shows "Loading ticket..."
+3. Page header:
+   - **← Back to tickets** link → `/tickets`
+   - Ticket **title** as `h1`
+   - Subtitle: `Ticket #{id}`
+   - **Edit** button (top right) → `/tickets/{id}/edit`
+4. **Two-column layout:**
+   - **Main card (left):**
+     - Status and priority badges
+     - Metadata grid: Assigned to, Created by, Created (absolute datetime), Updated (absolute datetime)
+     - Description section with full text
+   - **Sidebar (right):**
+     - `StatusTransitionActions` panel titled **Change Status** (see Journey 4)
+5. **Comments section** (full width below):
+   - Heading: `Comments ({count})`
+   - `CommentList`: chronological comment cards (author name, absolute timestamp, message)
+   - Empty comments: "No comments yet. Be the first to add an update."
+   - `AddComment` form below the list (see Journey 5)
 
-**Valid Status Transition Buttons:**
-- **Open:** "Start Progress" (→ InProgress), "Cancel Ticket" (→ Cancelled)
-- **InProgress:** "Mark Resolved" (→ Resolved), "Cancel Ticket" (→ Cancelled)
-- **Resolved:** "Close Ticket" (→ Closed)
-- **Closed:** No buttons (terminal state)
-- **Cancelled:** No buttons (terminal state)
+**Load errors:** API failures show an error toast only; the page body stays empty after the spinner (no inline error panel on this page).
 
 ---
 
 ### Journey 4: Changing Ticket Status
 
-**Goal:** User (typically an agent) wants to progress a ticket through its lifecycle
+**Goal:** Move a ticket through its lifecycle.
+
+**There is no confirmation dialog.** A single click on an enabled transition button calls the API immediately.
 
 **Steps:**
-1. User is viewing ticket detail page
-2. User sees status transition buttons based on current status
-3. User clicks a transition button (e.g., "Start Progress")
-4. System shows confirmation dialog: "Change status from Open to In Progress?"
-5. User confirms
-6. System calls API to change status
-7. API validates transition via state machine:
-   - If valid: Updates ticket status and UpdatedAt timestamp
-   - If invalid: Returns 400 error (should not happen if UI correctly shows buttons)
-8. System updates the UI:
-   - Status badge changes color/text
-   - Transition buttons update to show new valid transitions
-   - UpdatedAt timestamp updates
-9. System shows success message: "Status changed to In Progress"
+1. User is on ticket detail; the sidebar shows **Change Status**
+2. The UI renders a button for **every status except the current one** (four buttons when not terminal):
+   - **Start Progress** → InProgress
+   - **Mark Resolved** → Resolved
+   - **Close Ticket** → Closed
+   - **Cancel Ticket** → Cancelled
+3. Buttons allowed by the state machine are **enabled**; all others are **disabled** with a `title` tooltip explaining why (e.g. "Cannot move from Open to Resolved. Allowed: InProgress, Cancelled.")
+4. User clicks an **enabled** button
+5. All transition buttons disable while the request is in flight (`isChangingStatus`)
+6. API validates via the backend state machine
+7. On success:
+   - Ticket data refreshes in place (status badge, metadata, transition buttons update)
+   - Toast: "Status changed to {label}." (e.g. "In Progress")
+8. On failure: error toast; ticket state unchanged
 
-**Error Handling:**
-- If API returns 400 (invalid transition): Show error message
-- If concurrent update occurred: Show error, refresh ticket data
-- If network error: Show error message, allow retry
+**Valid transitions (enabled buttons by current status):**
+
+| Current Status | Enabled Buttons |
+|----------------|-----------------|
+| Open | Start Progress, Cancel Ticket |
+| InProgress | Mark Resolved, Cancel Ticket |
+| Resolved | Close Ticket |
+| Closed | *(all four buttons disabled — terminal)* |
+| Cancelled | *(all four buttons disabled — terminal)* |
+
+Invalid targets are still visible but disabled; the UI does not hide them.
 
 ---
 
 ### Journey 5: Adding a Comment
 
-**Goal:** User wants to add information or updates to a ticket
+**Goal:** Post an update on a ticket.
 
 **Steps:**
-1. User is viewing ticket detail page
-2. User scrolls to Comments section at bottom
-3. User sees "Add Comment" form
-4. User enters comment text in textarea
-5. User clicks "Add Comment" button
-6. System validates:
-   - Comment text is not empty
-   - If invalid: Show inline error
-7. System submits comment to API
-8. API saves comment with author and timestamp
-9. System adds new comment to the comment list immediately
-10. System clears the comment form
-11. System shows success message (optional)
-
-**UI Behavior:**
-- Disable submit button while loading
-- Clear form after successful submission
-- Keep form data if submission fails
-- Display new comment without page refresh
+1. User scrolls to the comments section on ticket detail
+2. Form label: **Add a comment**
+3. User enters text in a textarea (required, max 2000 characters per API validation)
+4. User clicks **Post Comment** (shows "Posting..." while submitting)
+5. Client validation via `DataAnnotationsValidator`; failures show inline messages
+6. Comment is submitted with `CreatedById` fixed to **user id 3** (`AddComment` `DefaultUserId`; no author picker in the UI)
+7. On success:
+   - Toast: "Comment added."
+   - Textarea cleared
+   - Parent page **reloads the full ticket** (`ReloadTicketAsync`) so the new comment appears in the list
+8. On failure: inline alert plus error toast; message text retained
 
 ---
 
 ### Journey 6: Editing a Ticket
 
-**Goal:** User wants to update ticket details (not status)
+**Goal:** Update title, description, priority, or assignee (not status).
+
+**Route:** `/tickets/{TicketId}/edit`
 
 **Steps:**
-1. User is viewing ticket detail page
-2. User clicks "Edit" button
-3. System navigates to Edit Ticket page
-4. System pre-fills form with current ticket data:
-   - Title
-   - Description
-   - Priority
-   - Assigned to
-5. User modifies one or more fields
-6. User clicks "Save" or "Update Ticket" button
-7. System validates input (same rules as create)
-8. If valid: System submits to API
-9. API updates ticket (except status) and UpdatedAt timestamp
-10. System shows success message
-11. System navigates back to ticket detail page
-12. Updated information is displayed
+1. User clicks **Edit** on ticket detail
+2. While loading, spinner shows "Loading ticket..."
+3. Page header: "Edit Ticket #{id}" with ticket title as subtitle
+4. Form pre-filled with current title, description, priority, and assignee
+5. User edits fields (same validation rules as create for title/description/priority)
+6. **Assign To**: "Unassigned" or `Name (Role)` — there is no **Created By** field on edit
+7. User clicks **Save Changes** (shows "Saving..." while submitting)
+8. On success:
+   - Toast: "Ticket updated."
+   - Navigation back to ticket detail
+9. On failure: inline alert plus error toast
+
+**Cancel:** **Cancel** navigates to `/tickets/{TicketId}` without saving.
 
 **Notes:**
-- Status cannot be changed via edit form (only via transition buttons on detail page)
-- User can change assignee to "Unassigned" by clearing selection
-- Cancel button returns to detail page without saving
-
----
-
-### Journey 7: Filtering Tickets by Status
-
-**Goal:** User wants to see only tickets in a specific status
-
-**Steps:**
-1. User is on ticket list page
-2. User clicks status filter dropdown
-3. Dropdown shows options: All, Open, InProgress, Resolved, Closed, Cancelled
-4. User selects a status (e.g., "Open")
-5. System calls API with status filter parameter
-6. System updates ticket list to show only Open tickets
-7. Filter dropdown shows selected status
-8. User can select "All" to remove filter
-
-**Combining with Search:**
-- Search and filter work together
-- Example: Search "login" + Filter "Open" = Open tickets containing "login"
-- Clearing search maintains filter
-- Clearing filter maintains search
+- Status cannot be changed on this form; use **Change Status** on the detail page
+- The **Edit** button on detail is always shown (including for Closed/Cancelled tickets); the API may reject updates to terminal tickets
 
 ---
 
 ## Page Layouts
 
-### Ticket List Page
+### Application Shell
 ```
-┌─────────────────────────────────────────────┐
-│  [Search: _________] [🔍] [Status: All ▼]  │
-│  [+ Create New Ticket]                      │
-├─────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────┐ │
-│  │ #1 Login Button Not Working           │ │
-│  │ [Open] [High] Agent: John | 2h ago    │ │
-│  └───────────────────────────────────────┘ │
-│  ┌───────────────────────────────────────┐ │
-│  │ #2 Dashboard Loading Slow             │ │
-│  │ [InProgress] [Medium] Agent: Sarah    │ │
-│  └───────────────────────────────────────┘ │
-└─────────────────────────────────────────────┘
+┌──────────────┬──────────────────────────────────────────────┐
+│  Navigation  │  TS  TicketDesk                              │
+│              │      Support Ticket Management               │
+│  📋 All      ├──────────────────────────────────────────────┤
+│     Tickets  │                                              │
+│              │           (page content)                     │
+│  ＋ New      │                                              │
+│     Ticket   │                              [toast alerts]  │
+└──────────────┴──────────────────────────────────────────────┘
 ```
 
-### Ticket Detail Page
+### Ticket List (`/tickets`)
 ```
-┌─────────────────────────────────────────────┐
-│  [← Back to List]                  [Edit]   │
-├─────────────────────────────────────────────┤
-│  Ticket #1: Login Button Not Working       │
-│  [Open] [High Priority]                     │
-├─────────────────────────────────────────────┤
-│  Description:                               │
-│  Users cannot click the login button...    │
-│                                             │
-│  Assigned to: John Agent                    │
-│  Created by: Jane User                      │
-│  Created: 2026-07-01 10:00 AM               │
-│  Updated: 2026-07-01 10:00 AM               │
-├─────────────────────────────────────────────┤
-│  Status Actions:                            │
-│  [Start Progress] [Cancel Ticket]           │
-├─────────────────────────────────────────────┤
-│  Comments (2)                               │
-│  ┌─────────────────────────────────────┐   │
-│  │ John Agent - 11:00 AM               │   │
-│  │ I will investigate this issue       │   │
-│  └─────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────┐   │
-│  │ John Agent - 2:00 PM                │   │
-│  │ Found the bug, working on fix       │   │
-│  └─────────────────────────────────────┘   │
-│                                             │
-│  Add Comment:                               │
-│  [___________________________________]      │
-│  [Add Comment]                              │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Support Tickets                          [+ New Ticket]    │
+│  Track, search, and manage support requests                 │
+├─────────────────────────────────────────────────────────────┤
+│  Search [________________________] [Search]                 │
+│  Status [All Statuses ▼]   ← changing status re-queries     │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────┐  ┌─────────────────────┐           │
+│  │ #1    [Open][High]  │  │ #2 [InProgress][Med]│           │
+│  │ Login Button Not... │  │ Dashboard Loading...│           │
+│  │ Users cannot click..│  │ Page takes too long │  (2-line  │
+│  │ Unassigned  2h ago  │  │ John Agent    1d ago│   clamp)  │
+│  └─────────────────────┘  └─────────────────────┘           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Create/Edit Ticket Page
+### Ticket Detail (`/tickets/{id}`)
 ```
-┌─────────────────────────────────────────────┐
-│  [← Back]                                   │
-├─────────────────────────────────────────────┤
-│  Create New Ticket                          │
-├─────────────────────────────────────────────┤
-│  Title *                                    │
-│  [_____________________________________]    │
-│                                             │
-│  Description *                              │
-│  [_____________________________________]    │
-│  [_____________________________________]    │
-│  [_____________________________________]    │
-│                                             │
-│  Priority *                                 │
-│  [Medium ▼]                                 │
-│                                             │
-│  Assign To                                  │
-│  [-- Select Agent -- ▼]                    │
-│                                             │
-│  [Cancel] [Create Ticket]                   │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  [← Back to tickets]                              [Edit]    │
+│  Login Button Not Working                                   │
+│  Ticket #1                                                  │
+├──────────────────────────────┬──────────────────────────────┤
+│  [Open] [High]               │  Change Status               │
+│                              │  [Start Progress]            │
+│  Assigned to   Unassigned    │  [Mark Resolved]  (disabled) │
+│  Created by    Jane User     │  [Close Ticket]   (disabled) │
+│  Created       Jul 1, 10:00  │  [Cancel Ticket]             │
+│  Updated       Jul 1, 10:00  │                              │
+│                              │  (invalid buttons disabled   │
+│  Description                 │   with hover tooltip)        │
+│  Users cannot click the...   │                              │
+├──────────────────────────────┴──────────────────────────────┤
+│  Comments (2)                                               │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ John Agent                    Jul 1, 2026 11:00 AM   │   │
+│  │ I will investigate this issue                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  Add a comment                                              │
+│  [____________________________________________]             │
+│  [Post Comment]                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Create Ticket (`/tickets/create`)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Create Ticket                                              │
+│  Report a new support issue                                 │
+├─────────────────────────────────────────────────────────────┤
+│  Title *                                                    │
+│  [_____________________________________]                    │
+│  Description *                                              │
+│  [_____________________________________]  (5 rows)          │
+│  Priority *          Assign To                              │
+│  [Medium ▼]          [Unassigned ▼]                           │
+│  Created By *                                               │
+│  [Jane User ▼]                                              │
+│                                                             │
+│  [Cancel]  [Create Ticket]                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Edit Ticket (`/tickets/{id}/edit`)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Edit Ticket #1                                             │
+│  Login Button Not Working                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Title *                                                    │
+│  [_____________________________________]                    │
+│  Description *                                              │
+│  [_____________________________________]                    │
+│  Priority *          Assign To                              │
+│  [High ▼]            [John Agent (Agent) ▼]               │
+│                                                             │
+│  [Cancel]  [Save Changes]                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -289,12 +298,50 @@
 ## Navigation Flow
 
 ```
-Ticket List
-    ├─→ Create Ticket → [Submit] → Ticket List
-    ├─→ View Ticket Detail
-    │   ├─→ Edit Ticket → [Save] → Ticket Detail
-    │   ├─→ Change Status → [Confirm] → Ticket Detail (updated)
-    │   ├─→ Add Comment → [Submit] → Ticket Detail (updated)
-    │   └─→ Back → Ticket List
-    └─→ Search/Filter → Ticket List (filtered)
+/  →  redirect  →  /tickets
+
+Sidebar: All Tickets (/tickets)  |  New Ticket (/tickets/create)
+
+/tickets
+    ├─→ + New Ticket / sidebar New Ticket  →  /tickets/create
+    │       └─→ [Create Ticket]  →  /tickets/{id}  (detail)
+    ├─→ click ticket card  →  /tickets/{id}
+    └─→ Search / Status filter  →  /tickets  (same page, refreshed list)
+
+/tickets/{id}
+    ├─→ ← Back to tickets  →  /tickets
+    ├─→ Edit  →  /tickets/{id}/edit
+    │       └─→ [Save Changes]  →  /tickets/{id}
+    │       └─→ [Cancel]  →  /tickets/{id}
+    ├─→ [enabled status button]  →  /tickets/{id}  (in-place update, no dialog)
+    └─→ [Post Comment]  →  /tickets/{id}  (reload ticket data)
 ```
+
+---
+
+## Shared UI Patterns
+
+| Pattern | Implementation |
+|---------|----------------|
+| Loading | `LoadingSpinner` with context message |
+| Empty results | `EmptyState` on ticket list; compact empty text in `CommentList` |
+| Success feedback | Toast via `NotificationService` |
+| Error feedback | Toast + inline `alert alert-error` on forms and list load |
+| Status display | `StatusBadge` with color-coded classes |
+| Priority display | `PriorityBadge` with color-coded classes |
+| Date formatting | Absolute (`MMM d, yyyy h:mm tt`) on detail; relative on list cards |
+
+---
+
+## Key Components
+
+| Component | Role |
+|-----------|------|
+| `SearchFilter` | Keyword + status filter; emits `TicketSearchCriteria` to parent |
+| `StatusTransitionActions` | Renders all non-current status buttons; disables invalid ones |
+| `TicketWorkflowService` | UI mirror of backend state machine (labels, enabled/disabled, tooltips) |
+| `CommentList` | Renders comment cards or empty message |
+| `AddComment` | Comment form; posts with fixed `CreatedById` |
+| `TicketApiService` | HTTP calls for ticket CRUD, search, status change |
+| `CommentApiService` | HTTP call to add comments |
+| `UserApiService` | Loads users for create/edit assignee and create author dropdowns |
