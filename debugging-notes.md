@@ -6,51 +6,9 @@ This document captures issues encountered during development, how they were inve
 
 ---
 
-## Issue Template
-
-### Issue #[Number]: [Brief Title]
-
-**Date:** [Date]  
-**Phase:** [Planning/Implementation/Testing/etc.]  
-**Severity:** [Critical/High/Medium/Low]
-
-**Problem Description:**
-[Describe the issue: What went wrong? What was the expected behavior vs actual behavior?]
-
-**How I Investigated:**
-[Steps taken to diagnose the issue:
-- Error messages reviewed
-- Logs examined
-- Breakpoints set
-- Database queries run
-- API endpoints tested
-- etc.]
-
-**How AI Helped:**
-[What prompts were used? What AI suggested? Was it helpful?]
-
-**What I Validated Manually:**
-[What testing/verification you did yourself to understand the issue]
-
-**Root Cause:**
-[What was the underlying cause of the issue?]
-
-**Fix Applied:**
-[What code changes or configuration changes were made?]
-
-**Verification:**
-[How you confirmed the fix works]
-
-**Lessons Learned:**
-[What you learned from this issue]
-
----
-
-## Example Issue (Delete this section when adding real issues)
-
 ### Issue #1: State Machine Allowing Invalid Transition
 
-**Date:** 2026-07-03  
+**Date:** 2026-07-13  
 **Phase:** Testing  
 **Severity:** Critical
 

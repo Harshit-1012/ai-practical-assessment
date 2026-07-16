@@ -2,9 +2,9 @@
 
 ## Personal Details
 
-**Name:** [Your Name]  
-**Role:** [Your Role/Position]  
-**Assessment Start Date:** [Start Date]  
+**Name:** Harshit Gupta
+**Role:** Senior Software Engineer 
+**Assessment Start Date:** 13-07-2026  
 **Submission Date:** [Submission Date]
 
 ## Project Selection
@@ -20,7 +20,7 @@
 ## Tools Used
 
 ### Development Tools
-- Visual Studio Code / Visual Studio 2022
+- Visual Studio 2022
 - Cursor AI
 - Git
 
@@ -34,7 +34,7 @@
 
 ### AI Tools
 - Cursor AI (primary tool for code generation, debugging, code review)
-- [Any other AI tools used]
+- 
 
 ## Setup Summary
 

@@ -10,7 +10,8 @@ This document describes how I used AI tools throughout the software development 
 
 **Tool Name:** Cursor AI  
 **Platform:** Integrated AI assistant in Cursor IDE (VS Code-based)  
-**Model:** [Specific model version used]  
+**Model:** Primarily Claude Sonnet 4.5, with Cursor's Auto mode used for some simpler/routine tasks (automatic model selection based on task complexity)
+
 **Why Chosen:** Integrated into development environment, context-aware, supports .NET and C# effectively
 
 ---
@@ -575,7 +576,7 @@ The goal is not to have AI write all the code, but to accelerate development whi
 
 ---
 
-**Document Created By:** [Your Name]  
-**Date:** [Date]  
+**Document Created By:** Harshit Gupta 
+**Date:** 2026-07-16
 **Tool Used:** Cursor AI  
 **Purpose:** Part A of .NET AI Capability Exercise
