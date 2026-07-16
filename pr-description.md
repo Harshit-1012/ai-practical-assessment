@@ -2,319 +2,240 @@
 
 ## Summary
 
-[Provide a concise 2-3 sentence summary of what this PR implements]
+Implements the **Core** scope of the Support Ticket Management System: a Blazor WebAssembly frontend and ASP.NET Core Web API backend with SQL Server persistence, state-machine-enforced ticket lifecycle, comments, search/filter, 28 integration tests, and full lifecycle documentation for the .NET AI Capability Exercise.
 
 **Project:** Support Ticket Management System  
-**Type:** [Feature/Enhancement/Bug Fix]  
-**Scope:** Full-stack implementation (Frontend + Backend + Database)
+**Type:** Feature (full-stack Core implementation)  
+**Scope:** Frontend + Backend + Database + Integration tests + lifecycle artifacts
 
 ---
 
 ## Features Implemented
 
 ### Core Features ✓
-- [ ] Create, read, update tickets
-- [ ] Add comments to tickets
-- [ ] State machine-enforced status transitions (Open → InProgress → Resolved → Closed)
-- [ ] Search tickets by keyword
-- [ ] Filter tickets by status
-- [ ] Persistent data storage (SQL Server)
-- [ ] Input validation (server-side)
-- [ ] Error handling and user feedback
 
-### Stretch Features (if implemented)
-- [ ] User authentication
-- [ ] Advanced filtering (priority, assignee)
-- [ ] Pagination
-- [ ] [Other stretch features]
+- [x] Create, read, update tickets
+- [x] Add comments to tickets
+- [x] State machine-enforced status transitions (Open → InProgress → Resolved → Closed, plus Cancelled)
+- [x] Search tickets by keyword
+- [x] Filter tickets by status
+- [x] Persistent data storage (SQL Server LocalDB)
+- [x] Server-side input validation and structured error responses
+- [x] Loading, empty, and error states in the UI
+
+### Stretch Features
+
+- [ ] User authentication / JWT
+- [ ] Role-based authorization
+- [ ] Pagination and advanced filtering
+- [ ] Real-time updates (SignalR)
 
 ---
 
 ## Technical Changes
 
-### Backend (ASP.NET Core Web API)
+### Backend (`TicketSystem.Api`)
 
-**New Files:**
-- `TicketsController.cs` - CRUD operations and status transitions
-- `CommentsController.cs` - Comment creation and retrieval
-- `UsersController.cs` - User list for assignment
-- `TicketService.cs` - Business logic layer
-- `TicketStateMachine.cs` - State transition validation (signature piece)
-- `ExceptionHandlingMiddleware.cs` - Global error handling
-- DTOs and validators
+**Controllers:**
+- `TicketsController` — list (search/filter), get, create, update, change status
+- `CommentsController` — list/create comments per ticket
+- `UsersController` — read-only user list for assignment dropdowns
 
-**Key Implementation Details:**
-- State machine enforces valid transitions only
-- Async/await throughout for scalability
-- Repository pattern via EF Core DbContext
-- Dependency injection for all services
-- CORS configured for Blazor frontend
+**Services:**
+- `TicketService` — CRUD, search/filter, status changes via state machine
+- `CommentService` — comment operations
+- `UserService` — read-only user queries
+- `TicketStateMachine` — **signature piece** enforcing 5 valid transitions only
 
-### Frontend (Blazor WebAssembly)
+**Infrastructure:**
+- `ExceptionHandlingMiddleware` — structured `ApiError` JSON (400/404/500)
+- EF Core `AppDbContext` with Fluent API + seed data (5 users)
+- CORS policy for Blazor dev origins
+- Swashbuckle Swagger UI at `/swagger` (Development)
+- `Testing` environment gate for integration test DbContext swap
 
-**New Files:**
-- `TicketList.razor` - Main ticket listing page with search/filter
-- `TicketDetail.razor` - Full ticket view with comments
-- `CreateTicket.razor` - Ticket creation form
-- `EditTicket.razor` - Ticket editing form
-- `TicketApiService.cs` - HTTP client wrapper for API calls
-- Reusable components (StatusBadge, PriorityBadge, CommentList, etc.)
+**Post-review fixes (Phase 9):**
+- Whitespace-only input rejection (`NotWhitespaceAttribute` + service guards)
+- Block updates to Closed/Cancelled tickets
 
-**Key Implementation Details:**
-- Component-based architecture
-- HTTP client for API communication
-- Loading states and error handling
-- Form validation
-- Responsive design with Bootstrap 5
+### Frontend (`TicketSystem.Blazor`)
 
-### Database (SQL Server + EF Core)
+**Pages:** `TicketList`, `TicketDetail`, `CreateTicket`, `EditTicket`, `Index` (redirect)
 
-**Entities:**
-- `User` - Seeded data for agents and users
-- `Ticket` - Core ticket entity with state machine status
-- `Comment` - Comments linked to tickets
+**Components:** `StatusBadge`, `PriorityBadge`, `SearchFilter`, `CommentList`, `AddComment`, `StatusTransitionActions`, `LoadingSpinner`, `EmptyState`, `ToastContainer`
 
-**Migrations:**
-- Initial migration creates schema
-- Seed data migration adds sample users
+**Client services:** `TicketApiService`, `CommentApiService`, `UserApiService`, `TicketWorkflowService` (UI transition rules), `TicketDisplayService`, `NotificationService`, `ApiClientHelper`
 
-**Key Implementation Details:**
-- Foreign key relationships configured via Fluent API
-- Indexes on foreign keys
-- DateTime fields with UTC timestamps
-- Cascade delete configured appropriately
+**UI:** Custom indigo/slate theme (`wwwroot/css/app.css`) — no Bootstrap dependency in active UI
+
+**Post-review fixes:**
+- Comment author user dropdown (removed hardcoded user ID 3)
+- `OnParametersSetAsync` on detail/edit pages for route parameter reload
+- Sidebar nav styling (`NavMenu.razor.css` + `::deep` / global fallback)
+- API connectivity fixes (CORS order, HttpClient timeout, SearchFilter binding)
+
+### Database
+
+**Entities:** `User`, `Ticket`, `Comment`  
+**Migration:** `20260714093803_InitialCreate`  
+**Persistence:** Verified — ticket survives API stop/restart (see `database/setup-notes.md`)
+
+### Tests (`TicketSystem.Tests`)
+
+**28 integration tests** via `WebApplicationFactory` + in-memory SQLite:
+- `StateMachineTransitionTests` (16) — all mandatory valid/invalid transitions
+- `TicketCrudTests` (5)
+- `CommentIntegrationTests` (3)
+- `TicketSearchFilterTests` (4)
+
+Helpers: `CustomWebApplicationFactory`, `TestDataSeeder`, `HttpClientJsonExtensions`
 
 ---
 
 ## Database Changes
 
-### Schema
 ```sql
--- Three main tables
-Users (Id, Name, Email, Role)
-Tickets (Id, Title, Description, Priority, Status, AssignedToId, CreatedById, CreatedAt, UpdatedAt)
+Users    (Id, Name, Email, Role)           -- seeded
+Tickets  (Id, Title, Description, Priority, Status, AssignedToId, CreatedById, CreatedAt, UpdatedAt)
 Comments (Id, TicketId, Message, CreatedById, CreatedAt)
 ```
 
-### Migrations
-- `Initial` - Creates schema
-- `SeedUsers` - Adds sample users (Admin, Agent, User)
-
-### Setup Required
+**Setup:**
 ```bash
+cd src/TicketSystem.Api
 dotnet ef database update
 ```
-
-**Connection String Configuration:**
-See README.md for setup instructions. Connection string must be configured in appsettings.json or user secrets.
 
 ---
 
 ## Testing Done
 
-### Automated Tests ✓
-- **State Machine Integration Tests:** All 5 valid transitions pass, all invalid transitions correctly rejected
-- **Unit Tests:** State machine logic, service methods
-- **Integration Tests:** API endpoints, CRUD operations, search/filter
-- **Validation Tests:** Required fields, max length, invalid data
+### Automated ✓
 
-**Test Results:** [X]/[X] tests passing (see test-results.md)
+| Suite | Tests | Status |
+|-------|-------|--------|
+| State machine integration | 16 | Pass |
+| Ticket CRUD | 5 | Pass |
+| Comments | 3 | Pass |
+| Search/filter | 4 | Pass |
+| **Total** | **28** | **Pass** |
 
-### Manual Testing ✓
-- Created tickets through UI
-- Updated tickets through UI
-- Changed status through valid transitions
-- Attempted invalid transitions (correctly blocked)
-- Added comments
-- Searched and filtered tickets
-- Verified data persists after application restart
+### Manual ✓
 
-### Edge Cases Tested
-- Empty/whitespace input
-- Maximum length boundaries
-- Invalid status transitions
-- Non-existent ticket/user IDs
-- Concurrent operations
+- Created/updated tickets through UI
+- Exercised full valid status path (Open → InProgress → Resolved → Closed)
+- Confirmed invalid transitions blocked (API 400 + disabled UI buttons)
+- Added comments with selected author
+- Search and status filter
+- Data persistence after API restart
+- Swagger manual API testing
 
 ---
 
 ## AI Usage Summary
 
-**Primary Tool:** Cursor AI
+**Primary tool:** Cursor AI with `.cursorrules` and `tool-specific/cursor-workflow/` context files.
 
-**AI-Assisted Activities:**
-1. **Requirements Analysis:** Extracted and organized requirements from spec
-2. **Design:** Generated entity relationship diagrams, API contract
-3. **Implementation:** Generated boilerplate code, state machine logic, CRUD operations
-4. **Testing:** Created test cases, test data generation
-5. **Debugging:** Analyzed error messages, suggested fixes
-6. **Code Review:** Security review, best practices validation
-7. **Documentation:** README generation, API documentation
+AI assisted across all lifecycle phases — planning, design docs, implementation (Phases 4–6), debugging (CORS/loading issue), integration tests (Phase 7), code review (Phase 9), and documentation (Phase 10). Prompt history in `ai-prompts/`; overall workflow draft in `final-ai-usage-summary.md`.
 
-**Validation Approach:**
-- All AI-generated code was reviewed and tested
-- State machine logic manually verified against requirements
-- Integration tests prove correctness
-- Multiple iterations to refine AI output
-
-**Key AI Contributions:**
-- Accelerated boilerplate code generation
-- Identified edge cases in state machine logic
-- Suggested best practices for EF Core configuration
-- Generated comprehensive test cases
-
-**AI Limitations Encountered:**
-- [Examples of where AI suggestions were incorrect or insufficient]
-- [How you validated and corrected AI output]
-
-For detailed prompt history, see `ai-prompts/` folder.
-
----
-
-## Screenshots / Demo Notes
-
-### Ticket List Page
-[Screenshot or description]
-
-### Ticket Detail with Status Transitions
-[Screenshot showing valid transition buttons]
-
-### Create Ticket Form
-[Screenshot]
-
-### State Transition Error Handling
-[Screenshot of invalid transition error message]
+**Validation:** All AI-generated code reviewed; state machine verified by integration tests + manual UI; persistence verified via API restart test.
 
 ---
 
 ## Known Limitations
 
-### Intentional Scope Limitations (Core)
-- No user authentication (users are seeded, not managed)
-- No authorization checks (all users can perform all actions)
-- No real-time updates (manual refresh required)
-- No pagination (all tickets loaded at once)
-- No audit log of ticket changes
-- No file attachments
+### Intentional (Core / Stretch)
 
-### Technical Debt (Acknowledged)
-- [Any quick fixes or temporary solutions]
-- [Areas that could be refactored]
-- [Performance optimizations not yet implemented]
+- No authentication or authorization (`spec.md` lists auth as Stretch)
+- `CreatedById` selected in UI — not derived from authenticated identity
+- No pagination, audit log, or file attachments
+- No real-time updates
 
----
+### Documented Technical Debt (Deferred)
 
-## Future Improvements
-
-### Stretch Features Not Implemented
-- User authentication and authorization
-- Role-based access control
-- Advanced filtering (by priority, assignee, date range)
-- Sorting options
-- Pagination for large datasets
-- Real-time updates via SignalR
-- Email notifications
-- Ticket assignment workflow
-- SLA tracking
-- Reporting and analytics
-
-### Technical Enhancements
-- Caching layer for frequently accessed data
-- API rate limiting
-- Request/response logging
-- Health check endpoints
-- API versioning
-- OpenAPI/Swagger documentation
-- Docker containerization
-- CI/CD pipeline
+- Duplicated state machine rules in `TicketWorkflowService` (UI mirror)
+- No unit test tier separate from integration tests
+- Production security hardening (rate limiting, CSP, strict CORS) not implemented
+- See `review-fixes.md` — 4 fixes applied, 48 findings deferred with rationale
 
 ---
 
 ## How to Review
 
-### Prerequisites
-- .NET 9 SDK installed
-- SQL Server or LocalDB available
-- Git
+### Setup
 
-### Setup Steps
 ```bash
-# Clone repository
-git clone [repository-url]
+git clone <repository-url>
 cd ai-practical-assessment
 
-# Update connection string in src/TicketSystem.Api/appsettings.json
-
-# Run migrations
+# Database
 cd src/TicketSystem.Api
 dotnet ef database update
 
-# Run API
-dotnet run
+# Terminal 1 — API
+dotnet run --launch-profile http
 
-# In a new terminal, run Blazor app
-cd src/TicketSystem.Blazor
-dotnet run
+# Terminal 2 — Blazor
+cd ../TicketSystem.Blazor
+dotnet run --launch-profile http
 
-# Run tests
-cd tests/TicketSystem.Tests
+# Tests
+cd ../../tests/TicketSystem.Tests
 dotnet test
 ```
 
-### Review Focus Areas
-1. **State Machine Implementation** - This is the signature piece
-   - Review `TicketStateMachine.cs` logic
-   - Verify integration tests cover all transitions
-2. **API Error Handling** - Check validation and error responses
-3. **Data Persistence** - Confirm data survives restart
-4. **UI/UX** - Verify user-friendly error messages and loading states
+Open http://localhost:5036
 
-### What to Test
-1. Create a ticket → Verify it appears in list
-2. Change status through valid transitions → Verify state machine enforcement
-3. Attempt invalid transition → Verify error message
-4. Add comments → Verify they persist
-5. Search and filter → Verify results accuracy
-6. Restart application → Verify data persists
+### Review Focus
+
+1. **`TicketStateMachine.cs`** — transition rules match spec
+2. **`StateMachineTransitionTests.cs`** — mandatory test coverage
+3. **`ExceptionHandlingMiddleware.cs`** — error shape for invalid transitions
+4. **`TicketService.ChangeStatusAsync`** — state machine integration
+5. **Blazor `TicketWorkflowService`** — UI mirrors rules (presentation only)
+6. **`code-review-notes.md` / `review-fixes.md`** — conscious scope decisions
+
+### Suggested Test Flow
+
+1. Create ticket → appears in list
+2. Open → InProgress → Resolved → Closed (each step succeeds)
+3. Attempt Open → Resolved via API → 400 with clear message
+4. Add comment → persists on reload
+5. Search "database" / filter by status
+6. Restart API → ticket still exists
 
 ---
 
 ## Checklist Before Merge
 
-- [ ] All tests passing
-- [ ] No linter warnings
-- [ ] README.md updated with setup instructions
-- [ ] Database migrations included
-- [ ] Seed data script included
-- [ ] No secrets committed to repository
-- [ ] .gitignore properly configured
-- [ ] All acceptance criteria met
-- [ ] Code review completed
-- [ ] Manual testing performed
-- [ ] Documentation complete
+- [x] All 28 tests passing
+- [x] Build succeeds (0 warnings on last verified build)
+- [x] README.md with setup instructions
+- [x] Database migrations included
+- [x] Seed data in migration
+- [x] No secrets in repository
+- [x] `.gitignore` configured
+- [x] Core acceptance criteria met
+- [x] Code review completed (`code-review-notes.md`)
+- [x] Targeted review fixes applied (`review-fixes.md`)
+- [ ] `reflection.md` — candidate to complete
+- [ ] `tool-workflow.md` — candidate to complete
 
 ---
 
 ## Related Documentation
 
-- `README.md` - Setup instructions
-- `implementation-plan.md` - Overall implementation approach
-- `design-notes.md` - Architecture decisions
-- `test-strategy.md` - Testing approach
-- `test-results.md` - Test execution results
-- `debugging-notes.md` - Issues encountered and resolved
-- `code-review-notes.md` - Code review findings
-- `reflection.md` - Project reflection and learnings
-- `ai-prompts/` - Complete prompt history
+- `README.md` — Setup and run instructions
+- `implementation-plan.md` — Phase breakdown
+- `design-notes.md` / `api-contract.md` / `data-model.md`
+- `test-strategy.md` / `ai-prompts/testing.md`
+- `debugging-notes.md` / `ai-prompts/debugging.md`
+- `code-review-notes.md` / `review-fixes.md`
+- `final-ai-usage-summary.md` — AI workflow across phases
+- `ai-prompts/` — Detailed prompt history
 
 ---
 
-## Additional Notes
-
-[Any other information reviewers should know]
-
----
-
-**Submitted By:** [Your Name]  
-**Date:** [Date]  
-**Estimated Review Time:** 30-45 minutes
+**Submitted By:** Harshit Gupta  
+**Date:** 2026-07-16  
+**Estimated Review Time:** 30–45 minutes

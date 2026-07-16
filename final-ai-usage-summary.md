@@ -3,458 +3,361 @@
 ## Executive Summary
 
 **Project:** Support Ticket Management System  
-**Duration:** [Start Date] to [End Date]  
-**Primary AI Tool:** Cursor AI  
-**Overall AI Impact:** [High/Medium/Low]
+**Duration:** 2026-07-14 to 2026-07-16  
+**Primary AI Tool:** Cursor AI (Agent mode)  
+**Overall AI Impact:** High
 
-This document provides a comprehensive summary of how AI was used throughout the entire software development lifecycle for this project.
+AI was used across the full software lifecycle — from repository scaffolding and planning artifacts through backend/frontend implementation, debugging, integration testing, code review, and documentation. The workflow was anchored by persistent context (`.cursorrules`, `tool-specific/cursor-workflow/`, phase-scoped prompts in `ai-prompts/`) and a consistent pattern of **generate → review → test → iterate**.
+
+**Candidate-authored separately:** `reflection.md` (personal learnings) and `tool-workflow.md` (Part A workflow foundation) — not generated in this document.
 
 ---
 
 ## AI Tool Configuration
 
 ### Tool Details
-- **Name:** Cursor AI
-- **Version:** [Version]
-- **IDE Integration:** VS Code / Cursor IDE
-- **Model:** [Model used]
 
-### Context Configuration
-**Files Used for Context:**
-- `.cursorrules` - Project-specific coding standards and patterns
-- `tool-specific/cursor-workflow/project-context.md` - Project overview
-- `tool-specific/cursor-workflow/spec.md` - Requirements specification
-- `tool-specific/cursor-workflow/tasks.md` - Task breakdown
-- Inline file context during development
+| Setting | Value |
+|---------|-------|
+| Tool | Cursor AI |
+| IDE | Cursor |
+| Context files | `.cursorrules`, `spec.md`, `implementation-plan.md`, `tool-specific/cursor-workflow/*` |
+| Approach | Phase-based prompts with "stop for review" checkpoints |
 
-**Context Strategy:**
-[Describe how you provided context to AI throughout the project]
+### Context Strategy
+
+1. **Before coding:** Created `.cursorrules` with .NET 9, Blazor, EF Core, and state machine conventions.
+2. **Per phase:** Referenced `implementation-plan.md` and `spec.md` in prompts (e.g., "Execute Phase 5…").
+3. **During implementation:** Pointed AI at specific files ("fix `CustomWebApplicationFactory`", "style `NavMenu`").
+4. **After implementation:** Asked AI to document *actual* code (`data-model.md`, `api-contract.md`, `design-notes.md`) rather than templates.
+5. **Boundaries:** No secrets in prompts; connection strings kept in appsettings / user secrets pattern.
 
 ---
 
 ## AI Usage by Lifecycle Phase
 
-### 1. Requirement Analysis (Phase 3)
-**Prompts Used:** See `ai-prompts/planning.md`
+### Phase 1–2: Foundation & Cursor Context
+
+**Prompts:** See `ai-prompts/planning.md` (Prompts #1–2)
 
 **Activities:**
-- Extracted functional and non-functional requirements from spec.md
-- Identified edge cases
-- Generated acceptance criteria checklists
-- Clarified ambiguous requirements
+- Scaffolded repo structure, three .NET projects, documentation templates
+- Created `.cursorrules`, `tool-specific/cursor-workflow/` files, `NuGet.config`
+- Initialized git repository
 
-**AI Contribution:** [High/Medium/Low]  
-**Time Saved:** ~[X] hours  
-**Quality Impact:** [Description]
-
-**Key Successes:**
-- [What worked well]
-
-**Challenges:**
-- [What didn't work]
+**AI contribution:** High — majority of boilerplate structure  
+**Validation:** Verified solution builds; corrected `spec.md` location when placed at wrong path  
+**Iteration:** 2 rounds (scaffold + path fix)
 
 ---
 
-### 2. Design (Phase 3)
-**Prompts Used:** See `ai-prompts/design.md`
+### Phase 3: Requirement Analysis & Planning Artifacts
+
+**Prompts:** See `ai-prompts/planning.md` (Prompts #2–3)
 
 **Activities:**
-- Generated entity relationship diagrams (Mermaid syntax)
-- Designed API contract structure
-- Drafted data model with constraints
-- Created state machine transition logic
-- Designed UI flow and component hierarchy
+- Generated `implementation-plan.md` from spec and plan inputs
+- Created `requirements-analysis.md` template content from spec
+- Produced planning artifact templates (acceptance criteria, test strategy, UI flow, etc.)
 
-**AI Contribution:** [High/Medium/Low]  
-**Time Saved:** ~[X] hours  
-**Quality Impact:** [Description]
-
-**Key Artifacts Generated:**
-- Entity relationship diagrams
-- API endpoint specifications
-- State machine flow diagrams
+**AI contribution:** High for structure and initial content  
+**Human edits:** Corrected evaluation weighting in `implementation-plan.md` (Part B = 60%, not documentation alone); filled "Understanding/Assumptions" sections personally where required
 
 ---
 
-### 3. Implementation (Phases 4-6)
-**Prompts Used:** See `ai-prompts/implementation.md`
+### Phase 4: Database Design & Implementation
+
+**Prompts:** See `ai-prompts/implementation.md` (database portions)
 
 **Activities:**
+- Entity models (`User`, `Ticket`, `Comment`)
+- `AppDbContext` Fluent API configurations
+- Initial migration `20260714093803_InitialCreate`
+- Five-user seed data via `HasData`
+- Persistence verification documented in `database/setup-notes.md`
 
-**Backend:**
-- DbContext and entity configurations
-- Migration scaffolding
-- Controller implementation
-- Service layer implementation
-- State machine logic (critical piece)
-- DTO creation
-- Validation logic
-- Error handling middleware
-
-**Frontend:**
-- Blazor page scaffolding
-- Component creation
-- HTTP client service implementation
-- Form validation
-- State management
-
-**AI Contribution:** [High/Medium/Low]  
-**Code Generated:** ~[X]% of codebase  
-**Code Accepted As-Is:** ~[X]%  
-**Code Modified After AI:** ~[X]%  
-**Code Rejected:** ~[X]%
-
-**Most Valuable AI Contributions:**
-1. [Contribution]
-2. [Contribution]
-3. [Contribution]
-
-**Significant Corrections Required:**
-1. [What needed fixing]
-2. [What needed fixing]
+**AI contribution:** High  
+**Validation:** `dotnet ef database update`; created ticket via API, restarted API, confirmed ticket persisted  
+**Key success:** FK relationships and seed data applied correctly on first migration
 
 ---
 
-### 4. Testing (Phase 7)
-**Prompts Used:** See `ai-prompts/testing.md`
+### Phase 5: Backend API
+
+**Prompts:** See `ai-prompts/implementation.md` (Prompts #1–2)
 
 **Activities:**
-- Test project setup
-- State machine unit test generation
-- Integration test scaffolding
-- Test data generation
-- Edge case identification
-- Test helper utilities
+- DTOs, services, controllers
+- `TicketStateMachine` (signature piece)
+- `ExceptionHandlingMiddleware`
+- Data Annotations validation
+- CORS configuration
+- Swashbuckle Swagger UI (added after noting .NET 9 template lacks interactive Swagger)
 
-**AI Contribution:** [High/Medium/Low]  
-**Tests Generated:** [X] tests  
-**Tests Accepted:** [X] tests  
-**Tests Modified:** [X] tests
-
-**Test Coverage Achieved:** [X]%
-
-**Key Successes:**
-- [What worked well]
-
-**Tests That Needed Significant Rework:**
-- [Tests that were incorrect or insufficient]
+**AI contribution:** High (~80% initial code)  
+**Human changes:** Swagger package addition; manual Swagger verification  
+**Validation:** Swagger UI — create ticket, list users, change status, validation errors
 
 ---
 
-### 5. Debugging (Phase 8)
-**Prompts Used:** See `ai-prompts/debugging.md`
+### Phase 6: Blazor Frontend
+
+**Prompts:** See `ai-prompts/implementation.md` (Prompts #3–4)
 
 **Activities:**
-- Error message analysis
-- Root cause identification
-- Fix suggestions
-- Debugging approach recommendations
+- Client service layer (`TicketApiService`, `TicketWorkflowService`, etc.)
+- Pages and reusable components
+- Custom indigo/slate theme (explicitly *not* default Bootstrap)
+- Removed template pages (Counter, Weather, Home)
+- **Debug pass:** Sidebar styling + infinite loading fix (CORS/middleware order, SearchFilter binding, HttpClient timeout)
 
-**Issues Debugged with AI:** [X]  
-**AI Success Rate:** [X]%
+**AI contribution:** High  
+**Human validation:** Browser testing; confirmed CORS preflight and ticket list load  
+**Iteration:** 2 (initial build + connectivity/styling fix)
 
-**Examples:**
-1. **Issue:** [Brief description]
-   - **AI Help:** [What AI suggested]
-   - **Outcome:** [Helpful/Partially helpful/Not helpful]
-
-2. [Another example]
+**AI limitation encountered:** Initial nav CSS in `MainLayout.razor.css` did not apply to `NavLink` in child component — required understanding Blazor CSS isolation (`::deep`) and middleware ordering.
 
 ---
 
-### 6. Code Review (Phase 9)
-**Prompts Used:** See `ai-prompts/code-review.md`
+### Phase 7: Testing
+
+**Prompts:** See `ai-prompts/testing.md` (Prompts #1–2)
 
 **Activities:**
-- Security review
-- Best practices validation
-- Code quality assessment
-- Performance analysis
-- Refactoring suggestions
+- `WebApplicationFactory` + SQLite in-memory setup
+- `TestDataSeeder`, `HttpClientJsonExtensions`, `IntegrationTestBase`
+- 28 integration tests (state machine, CRUD, comments, search/filter)
+- Fixed dual DbContext provider conflict (`Testing` environment gate in `Program.cs`)
 
-**AI Contribution:** [High/Medium/Low]
-
-**Findings:**
-- **Total Suggestions:** [X]
-- **Accepted:** [X]
-- **Rejected:** [X]
-- **Deferred:** [X]
-
-**Most Valuable Findings:**
-1. [Finding]
-2. [Finding]
-
-**Rejected Suggestions:**
-1. [Why rejected]
-2. [Why rejected]
+**AI contribution:** High  
+**Human validation:** Ran `dotnet test` — 28/28 pass after provider fix  
+**Iteration:** 2 (initial tests all failed → factory/environment fix)
 
 ---
 
-### 7. Documentation (Phase 10)
-**Prompts Used:** See `ai-prompts/documentation.md`
+### Phase 8: Testing & Debugging
+
+**Prompts:** See `ai-prompts/debugging.md`
 
 **Activities:**
-- README generation
-- API documentation
-- Comment generation
-- User guide content
-- Technical documentation
+- Documented loading-spinner / CORS issue
+- Documented test provider conflict
+- Manual UI verification checklist (create, transitions, comments, search/filter)
 
-**AI Contribution:** [High/Medium/Low]
+**AI contribution:** Medium — diagnosis and fix suggestions; human confirmed in browser and test runner  
+**Outcome:** Issues resolved and recorded in `ai-prompts/debugging.md`
 
-**Documentation AI-Generated:** ~[X]%  
-**Documentation Accepted As-Is:** ~[X]%  
-**Documentation Heavily Modified:** ~[X]%
+---
+
+### Phase 9: Code Review & Refinement
+
+**Prompts:** See `ai-prompts/code-review.md`
+
+**Activities:**
+- AI-assisted review of backend, frontend, and tests (52 findings)
+- Applied **4 targeted fixes** (comment author, whitespace validation, terminal ticket edit guard, route reload)
+- Deferred 48 items with documented rationale (`review-fixes.md`)
+
+**AI contribution:** High for breadth of review  
+**Human judgment:** Triaged findings against `spec.md` Core vs Stretch — deferred authentication, security hardening, and extra test tiers  
+**Fixes applied:** Documented in `review-fixes.md` with file lists and verification steps
+
+---
+
+### Phase 10: Documentation & Finalization
+
+**Prompts:** See `ai-prompts/documentation.md`
+
+**Activities:**
+- Filled `data-model.md`, `api-contract.md`, `design-notes.md` from actual code
+- Created `README.md`, `pr-description.md`, this summary
+- Left `reflection.md` and `tool-workflow.md` for candidate authorship
+
+**AI contribution:** High for drafting; content cross-checked against source files
 
 ---
 
 ## Prompt Strategy Patterns
 
-### Effective Prompt Patterns I Discovered
+### What Worked Well
 
-**Pattern 1: Context + Instruction + Constraints**
+**1. Phase-scoped execution prompts**
 ```
-"In the TicketSystem.Api project, create a TicketStateMachine class that 
-enforces these transitions: [list]. The class should have a CanTransition 
-method returning bool and a ValidateTransition method that throws an 
-exception for invalid transitions. Use C# 12 patterns and .NET 9 conventions."
+Execute Phase 7 from implementation-plan.md: write mandatory state machine 
+integration tests… Stop after this so I can review before running.
 ```
+Clear scope, explicit stop point, references plan file.
 
-**Pattern 2: Iterative Refinement**
+**2. Constrained implementation prompts**
 ```
-Initial: "Create a Blazor component for ticket list"
-Refine 1: "Add search functionality to the component"
-Refine 2: "Add status filter dropdown"
-Refine 3: "Handle empty state when no tickets found"
+Architecture constraint: Keep all business logic in Services layer — NOT in 
+Razor components. UI: custom theme, not generic Bootstrap.
 ```
+Reduced rework by stating non-negotiables upfront.
 
-**Pattern 3: Validation Request**
+**3. Fix prompts with symptoms + investigation ask**
 ```
-"Review this state machine logic for correctness. Check if all transitions 
-are properly validated and if there are any edge cases I missed."
+Ticket list stuck on "Loading tickets..." — check console/network, API URL, 
+CORS. Fix root cause.
 ```
+Better than "make it work" — AI traced middleware order and binding issues.
 
-### Ineffective Prompts I Learned to Avoid
+**4. Document-from-code prompts**
+```
+Fill data-model.md based on actual implemented code.
+```
+Avoids docs drifting from reality.
 
-1. **Too Vague:** "Create a ticket system"
-   - **Problem:** No context, AI generated boilerplate
-   - **Better:** Provide specific requirements and context
+### What to Avoid
 
-2. **Too Complex:** "Create the entire API with all endpoints, validation, error handling, and documentation"
-   - **Problem:** Output was too generic, needed heavy modification
-   - **Better:** Break into smaller, focused prompts
-
-3. **Assuming Context:** "Add the state machine validation"
-   - **Problem:** AI didn't know where or how
-   - **Better:** Specify file, method, and implementation approach
+- **Over-broad:** "Build the entire ticket system" — too much at once, generic output
+- **Assuming context:** "Add validation" without file/method — wrong target
+- **Treating all review findings as mandatory** — 52 findings needed triage against scope
 
 ---
 
-## AI Validation Approach
+## Validation Approach
 
-### My Validation Process
+### Standard checks for AI-generated code
 
-**For Every AI-Generated Code:**
-1. ✓ Read and understand the code
-2. ✓ Verify it matches requirements
-3. ✓ Check for security issues
-4. ✓ Test functionality
-5. ✓ Review for best practices
-6. ✓ Verify database impact (if applicable)
+1. Read and understand generated code
+2. `dotnet build` — 0 warnings target
+3. `dotnet test` — 28 integration tests
+4. Manual UI smoke test for user-facing changes
+5. Swagger for API contract verification
+6. Compare docs to actual source files
 
-**For Critical Code (State Machine):**
-1. ✓ Manual logic verification
-2. ✓ Comprehensive unit tests
-3. ✓ Integration tests
-4. ✓ Manual UI testing
-5. ✓ Edge case validation
-6. ✓ Code review
+### Extra rigor for state machine
 
-### Validation Tools Used
-- Unit tests (xUnit)
-- Integration tests
-- Manual testing through UI
-- Code review checklists
-- Linter (built-in C#)
-- Database inspection
+1. Read `TicketStateMachine.cs` against spec transition table
+2. Run `StateMachineTransitionTests` (16 cases)
+3. Manual UI — disabled buttons for invalid transitions
+4. API — invalid transition returns structured 400
+
+### When AI was wrong or incomplete
+
+| Issue | AI mistake | Human correction |
+|-------|-----------|------------------|
+| Sidebar styling | CSS in wrong scoped file | `NavMenu.razor.css` + `::deep` |
+| Loading hang | Did not initially identify middleware order | CORS before HTTPS redirect |
+| Test factory | Both SQL providers registered | `Testing` env gate in `Program.cs` |
+| Code review | Auth flagged as top fix | Deferred — Stretch per spec |
+| Evaluation % | Wrong weight in plan | Manual correction in plan doc |
 
 ---
 
-## AI Impact Metrics
+## AI Impact Metrics (Estimated)
 
-### Quantitative Metrics
+| Metric | Estimate |
+|--------|----------|
+| Prompts across lifecycle | ~15 major phase prompts + ~5 fix/review prompts |
+| Code initially AI-generated | ~75–85% |
+| Accepted with minor/no edits | ~60% (entities, services, tests, docs structure) |
+| Required iteration (1+ fix rounds) | ~25% (frontend debug, test factory, Swagger) |
+| Rejected or heavily reworked | ~10% (wrong paths, over-scoped suggestions) |
+| Integration tests from AI | 28 (all passing after factory fix) |
+| Time saved (estimate) | ~15–20 hours vs solo implementation |
+| Manual time still required | Review, triage, browser testing, personal reflection docs |
 
-| Metric | Value |
-|--------|-------|
-| Total Lines of Code | [X] |
-| AI-Generated Code (initial) | [X] (~[X]%) |
-| AI Code Accepted As-Is | [X] (~[X]%) |
-| AI Code Modified | [X] (~[X]%) |
-| AI Code Rejected | [X] (~[X]%) |
-| AI-Generated Tests | [X] |
-| Prompts Used | [X] |
-| Prompt Iterations | [X] |
-| AI Mistakes Caught | [X] |
-| Time with AI | ~[X] hours |
-| Estimated Time Without AI | ~[X] hours |
-| Time Saved | ~[X] hours (~[X]%) |
-
-### Qualitative Metrics
-
-**Code Quality:** [Improved/Same/Decreased]  
-**Test Coverage:** [Increased due to AI test generation]  
-**Documentation Quality:** [Better/Same/Worse]  
-**Learning:** [What I learned that I wouldn't have otherwise]
+*Exact line counts not measured — estimates based on phase completion patterns.*
 
 ---
 
 ## What AI Did Exceptionally Well
 
-### Top Strengths
-1. **Boilerplate Generation**
-   - Entity classes, DTOs, controllers
-   - Saved significant time on repetitive code
-
-2. **Test Case Generation**
-   - Comprehensive test coverage ideas
-   - Edge case identification
-
-3. **Documentation Drafting**
-   - Initial structure and content
-   - Consistent formatting
-
-4. [Other strength]
+1. **Boilerplate at speed** — entities, DTOs, controllers, Blazor pages, test scaffolding
+2. **State machine implementation** — correct transition table on first pass
+3. **Integration test structure** — `WebApplicationFactory`, theory data for transitions
+4. **Documentation drafting** — API contract, data model, README from real code
+5. **Broad code review** — surfaced validation gaps, routing bugs, security posture quickly
+6. **Debugging compound issues** — CORS + binding + timeout identified together
 
 ---
 
 ## What AI Struggled With
 
-### Key Limitations
-1. **Complex Business Logic**
-   - State machine transition logic needed significant review
-   - AI sometimes misunderstood requirements
-
-2. **Project-Specific Patterns**
-   - Had to explicitly guide toward project conventions
-   - Context was sometimes insufficient
-
-3. **Error Handling Edge Cases**
-   - AI generated happy path but missed error scenarios
-   - Needed explicit prompting for error cases
-
-4. [Other limitation]
+1. **Blazor CSS isolation** — did not initially place nav styles correctly for `NavLink`
+2. **Test host configuration** — minimal hosting + `ConfigureTestServices` ordering subtlety
+3. **Scope judgment** — review treated auth as must-fix; needed human triage against spec
+4. **Production concerns** — suggested many items appropriate for prod but out of assessment scope
+5. **Verification** — cannot replace browser/test runner confirmation
 
 ---
 
-## Lessons Learned About AI Usage
+## Reusable Assets Created
 
-### Do's
-✓ Provide clear, specific prompts with context  
-✓ Iterate on AI output, don't accept first version  
-✓ Always test AI-generated code  
-✓ Use AI for brainstorming and exploration  
-✓ Validate critical logic manually  
-✓ Document what AI got wrong for learning  
-✓ Use AI for accelerating repetitive tasks  
-
-### Don'ts
-✗ Blindly trust AI output  
-✗ Use vague or overly broad prompts  
-✗ Skip testing of AI-generated code  
-✗ Commit generated code without review  
-✗ Assume AI understands full project context  
-✗ Use AI for security-critical logic without validation  
-✗ Copy-paste without understanding  
+| Asset | Path | Reusable? |
+|-------|------|-----------|
+| Cursor rules | `.cursorrules` | Yes — adapt per .NET project |
+| Workflow context | `tool-specific/cursor-workflow/` | Yes — template for future exercises |
+| Prompt logs | `ai-prompts/*.md` | Yes — lifecycle pattern |
+| Integration test pattern | `CustomWebApplicationFactory` + `Testing` env | Yes — ASP.NET Core + EF |
+| State machine test matrix | `StateMachineTransitionTests` | Yes — transition table driven |
+| Doc templates | Root `*.md` files | Yes — lifecycle artifact set |
 
 ---
 
-## Reusable AI Workflow Assets
+## Recommendations
 
-### Created for This Project, Reusable for Others
+### For future AI-assisted projects
 
-1. **`.cursorrules` File**
-   - Path: `.cursorrules`
-   - Contains: .NET 9 and Blazor conventions
-   - Reusable: ✓ Yes
+1. Set `.cursorrules` and context files **before** first code prompt
+2. Use **phase prompts with stop points** — review before next phase
+3. Always **run tests and manual checks** after AI changes
+4. **Triage review findings** against spec scope before implementing
+5. Keep **prompt history** as you go — reconstructing later is harder
 
-2. **Project Context Template**
-   - Path: `tool-specific/cursor-workflow/project-context.md`
-   - Purpose: Provide AI with project overview
-   - Reusable: ✓ Yes (with modifications)
+### For this submission
 
-3. **Prompt Templates**
-   - Path: `ai-prompts/*.md`
-   - Categories: Planning, Design, Implementation, Testing, Debugging, Review, Documentation
-   - Reusable: ✓ Yes
-
-4. **Test Generation Patterns**
-   - State machine test matrix approach
-   - Integration test structure
-   - Reusable: ✓ Yes
-
-5. **Documentation Templates**
-   - All lifecycle document templates
-   - Reusable: ✓ Yes
-
----
-
-## Recommendations for Future Projects
-
-### For Myself
-1. [Personal improvement]
-2. [Process refinement]
-3. [Tool usage enhancement]
-
-### For Others Using AI
-1. [Advice for effective AI usage]
-2. [Common pitfalls to avoid]
-3. [Best practices to adopt]
-
-### For Tool Improvements
-1. [Features that would help]
-2. [Context provision enhancements]
-3. [Validation assistance]
+- Complete `tool-workflow.md` (Part A) and `reflection.md` (Part C) personally
+- Optional: fill `test-results.md` with latest `dotnet test` output
+- Optional: add screenshots to `pr-description.md` before final submission
 
 ---
 
 ## Final Assessment
 
-### Overall AI Impact
-**Rating:** [1-10]
+**Overall AI impact rating:** 8/10
 
-**Justification:**
-[Explain your rating based on time saved, quality impact, learning value]
+AI materially accelerated implementation and documentation while requiring consistent human validation, scope discipline, and iteration on integration/debugging issues. The state machine and test suite are the strongest evidence that AI + verification produces reliable Core functionality.
 
-### Would I Use AI Again?
-**Answer:** [Yes/No/Conditionally]
+**Would I use AI again?** Yes — with the same guardrails: persistent context, phased prompts, mandatory tests, and explicit scope boundaries.
 
-**Reasoning:**
-[Explain your decision]
-
-### Key Takeaway
-[One sentence summarizing your AI usage experience]
+**Key takeaway:** AI is most effective as a **fast draft engine** paired with human **scope judgment, testing, and triage** — not as an autonomous implementer.
 
 ---
 
 ## Appendices
 
-### Appendix A: Complete Prompt Count by Category
-- Planning: [X] prompts
-- Design: [X] prompts
-- Implementation: [X] prompts
-- Testing: [X] prompts
-- Debugging: [X] prompts
-- Code Review: [X] prompts
-- Documentation: [X] prompts
+### Appendix A: Prompt log locations
 
-### Appendix B: Files with Significant AI Contribution
-[List files where AI generated >50% of code]
+| Phase | File |
+|-------|------|
+| Planning / setup | `ai-prompts/planning.md` |
+| Design | `ai-prompts/design.md` |
+| Implementation | `ai-prompts/implementation.md` |
+| Testing | `ai-prompts/testing.md` |
+| Debugging | `ai-prompts/debugging.md` |
+| Code review | `ai-prompts/code-review.md` |
+| Documentation | `ai-prompts/documentation.md` |
 
-### Appendix C: Files with No AI Contribution
-[List files written entirely manually]
+### Appendix B: High-AI-contribution files
+
+- `src/TicketSystem.Api/Services/*`, `Controllers/*`, `Data/AppDbContext.cs`
+- `src/TicketSystem.Blazor/Pages/**`, `Components/**`, `Services/**`
+- `tests/TicketSystem.Tests/IntegrationTests/**`
+- Lifecycle docs: `api-contract.md`, `data-model.md`, `design-notes.md`, `README.md`
+
+### Appendix C: Primarily human-owned artifacts
+
+- `reflection.md` *(to be completed by candidate)*
+- `tool-workflow.md` *(to be completed by candidate)*
+- `candidate-info.md` personal details
+- Review triage decisions in `review-fixes.md`
+- Evaluation weight correction in `implementation-plan.md`
 
 ---
 
-**Summary Completed By:** [Your Name]  
-**Date:** [Date]  
-**Project Status:** [Complete/Submitted]
+**Summary drafted with:** Cursor AI assistance  
+**Date:** 2026-07-16  
+**Project status:** Core complete — submission artifacts in progress
