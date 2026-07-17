@@ -27,7 +27,7 @@ Implements the **Core** scope of the Support Ticket Management System: a Blazor 
 
 - [x] User authentication / JWT (demo sign-in by user select; mutations protected; reads anonymous)
 - [ ] Role-based authorization
-- [ ] Pagination and advanced filtering
+- [x] Pagination and advanced filtering — priority and assignee filters, sort by CreatedAt/Priority/Status (asc/desc) on `GET /api/tickets` and Blazor `SearchFilter`; pagination not implemented
 - [ ] Real-time updates (SignalR)
 
 ---
