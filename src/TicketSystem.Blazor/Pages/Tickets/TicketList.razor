@@ -16,7 +16,13 @@
     </button>
 </div>
 
-<SearchFilter OnSearch="HandleSearch" InitialKeyword="@currentKeyword" InitialStatus="@currentStatus" />
+<SearchFilter OnSearch="HandleSearch"
+              InitialKeyword="@currentKeyword"
+              InitialStatus="@currentStatus"
+              InitialPriority="@currentPriority"
+              InitialAssigneeSelection="@currentAssigneeSelection"
+              InitialSortBy="@currentSortBy"
+              InitialSortDirection="@currentSortDirection" />
 
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
@@ -68,6 +74,10 @@
     private string? errorMessage;
     private string? currentKeyword;
     private string? currentStatus;
+    private string? currentPriority;
+    private string? currentAssigneeSelection;
+    private string? currentSortBy;
+    private string? currentSortDirection;
 
     protected override async Task OnInitializedAsync() => await LoadTicketsAsync();
 
@@ -75,6 +85,12 @@
     {
         currentKeyword = criteria.Keyword;
         currentStatus = criteria.Status;
+        currentPriority = criteria.Priority;
+        currentSortBy = criteria.SortBy;
+        currentSortDirection = criteria.SortDirection;
+        currentAssigneeSelection = criteria.UnassignedOnly
+            ? "unassigned"
+            : criteria.AssignedToId?.ToString() ?? "all";
         await LoadTicketsAsync(criteria);
     }
 

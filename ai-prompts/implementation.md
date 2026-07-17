@@ -290,3 +290,63 @@ missing auth, not broken search logic)
 **Iteration Count:** 1
 
 **Outcome:** All 28 integration tests passing.
+
+---
+
+### Prompt #7: Stretch Advanced Filtering and Sorting
+
+**Date:** 2026-07-17
+**Context Provided:** Core search/status filter working; Stretch scope for 
+pagination/advanced filtering per spec
+
+**Prompt:**
+```
+Implement advanced filtering and sorting as a Stretch feature:
+- Filter tickets by priority (in addition to existing status filter)
+- Filter tickets by assignee
+- Sort by CreatedAt, Priority, or Status (ascending/descending)
+- Update the API's GET /api/tickets endpoint to accept these as query 
+  parameters
+- Update the Blazor SearchFilter component and TicketList page to 
+  expose these controls
+
+Keep this scoped — don't touch authentication, state machine, or 
+existing working search/status-filter behavior.
+
+Also add a new entry to ai-prompts/implementation.md logging this exact 
+prompt, following the same template as the other entries (Date, Context 
+Provided, Prompt, AI Response Summary, Accepted/Changed/Rejected, 
+Iteration Count, Outcome) — fill in the AI Response Summary and Outcome 
+sections based on what you actually build.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+API: Extended `GET /api/tickets` with query parameters `priority`, 
+`assignedToId`, `unassignedOnly`, `sortBy`, `sortDirection` (existing 
+`status` and `keyword` unchanged). Added `TicketListQueryDto`; 
+`TicketService` validates priority/assignee/sort inputs, applies filters 
+in EF query, sorts in-memory by logical priority/status order or 
+`CreatedAt` (default `CreatedAt` desc preserved when sort params omitted). 
+Blazor: expanded `TicketSearchCriteria` and `TicketApiService` query 
+string builder; `SearchFilter` now has priority, assignee (All/Unassigned/
+users), sort-by, and order dropdowns with auto-apply on change; 
+`TicketList` tracks and passes initial filter state; `TicketDisplayService` 
+gained filter/sort option helpers; CSS updated for multi-row filter layout.
+
+**What Was Accepted:**
+- Query-parameter approach on existing endpoint (no new routes)
+- In-memory sort for Priority/Status logical ordering
+- Assignee filter via `assignedToId` + `unassignedOnly` flags
+- Auto-apply on dropdown change (matching existing status filter behavior)
+
+**What Was Changed:** None at implementation time — stopped for review 
+before running tests
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Solution builds successfully with 0 warnings/errors. 
+Integration tests not run during this pass.

@@ -4,7 +4,7 @@ namespace TicketSystem.Api.Services;
 
 public interface ITicketService
 {
-    Task<IReadOnlyList<TicketResponseDto>> GetTicketsAsync(string? status, string? keyword, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TicketResponseDto>> GetTicketsAsync(TicketListQueryDto query, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> GetTicketByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto, int createdById, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> UpdateTicketAsync(int id, UpdateTicketDto dto, CancellationToken cancellationToken = default);

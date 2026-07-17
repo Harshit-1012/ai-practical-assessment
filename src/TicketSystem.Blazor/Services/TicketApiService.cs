@@ -51,6 +51,30 @@ public class TicketApiService : ITicketApiService
             parts.Add($"status={Uri.EscapeDataString(criteria.Status)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.Priority) && criteria.Priority != "All")
+        {
+            parts.Add($"priority={Uri.EscapeDataString(criteria.Priority)}");
+        }
+
+        if (criteria.UnassignedOnly)
+        {
+            parts.Add("unassignedOnly=true");
+        }
+        else if (criteria.AssignedToId.HasValue)
+        {
+            parts.Add($"assignedToId={criteria.AssignedToId.Value}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.SortBy) && !criteria.SortBy.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add($"sortBy={Uri.EscapeDataString(criteria.SortBy)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.SortDirection) && !criteria.SortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add($"sortDirection={Uri.EscapeDataString(criteria.SortDirection)}");
+        }
+
         return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
     }
 }

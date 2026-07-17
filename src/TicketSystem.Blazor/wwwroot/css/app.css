@@ -175,8 +175,8 @@ p {
 
 /* Search filter */
 .search-filter {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
     margin-bottom: 1.5rem;
     padding: 1.25rem;
@@ -184,6 +184,16 @@ p {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
+}
+
+.search-filter__controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.search-filter__field--keyword {
+    width: 100%;
 }
 
 .search-filter__input-group {
