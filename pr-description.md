@@ -25,7 +25,7 @@ Implements the **Core** scope of the Support Ticket Management System: a Blazor 
 
 ### Stretch Features
 
-- [ ] User authentication / JWT
+- [x] User authentication / JWT (demo sign-in by user select; mutations protected; reads anonymous)
 - [ ] Role-based authorization
 - [ ] Pagination and advanced filtering
 - [ ] Real-time updates (SignalR)
@@ -146,8 +146,8 @@ AI assisted across all lifecycle phases — planning, design docs, implementatio
 
 ### Intentional (Core / Stretch)
 
-- No authentication or authorization (`spec.md` lists auth as Stretch)
-- `CreatedById` selected in UI — not derived from authenticated identity
+- Demo JWT auth only — no passwords; role claims issued but not enforced on endpoints
+- No Blazor route guards — browsing without login; mutations require sign-in
 - No pagination, audit log, or file attachments
 - No real-time updates
 

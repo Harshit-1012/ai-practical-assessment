@@ -166,7 +166,42 @@ dotnet build TicketSystem.slnx
 | 4 | Jane Smith | jane.smith@ticketsystem.com | Agent |
 | 5 | Bob Johnson | bob.johnson@ticketsystem.com | User |
 
-Use these IDs when creating tickets or comments via the API or UI.
+Use these IDs when signing in or calling `POST /api/auth/login`.
+
+## Sign In (Stretch Authentication)
+
+Mutations (create/update ticket, change status, post comment) require a signed-in user. Browsing tickets is still allowed without login.
+
+### Blazor UI
+
+1. Open http://localhost:5036
+2. Click **Sign In** in the top bar (or go to `/login`, or use the sidebar link)
+3. Select a seeded user from the dropdown (e.g. **Regular User**)
+4. Click **Sign In** — the top bar shows your name and role
+5. Create tickets, change status, or post comments; **Sign Out** when done
+
+### API (Swagger or curl)
+
+1. Obtain a token:
+
+```bash
+curl -X POST http://localhost:5041/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": 3}"
+```
+
+2. Use the returned `token` on protected endpoints:
+
+```bash
+curl -X POST http://localhost:5041/api/tickets \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"Test\",\"description\":\"From API\",\"priority\":\"Medium\"}"
+```
+
+In Swagger, click **Authorize**, enter `Bearer YOUR_TOKEN_HERE`, then call mutation endpoints.
+
+**Note:** This is demo authentication (user select, no password). Read endpoints (`GET` tickets, users, comments) do not require a token.
 
 ## State Machine (Signature Feature)
 
@@ -179,11 +214,11 @@ Use these IDs when creating tickets or comments via the API or UI.
 
 Invalid transitions return `400 Bad Request` with structured error details. See `data-model.md` and `api-contract.md`.
 
-## Known Limitations (Core Scope)
+## Known Limitations
 
-- **No authentication** — all endpoints and UI routes are open (Stretch per spec)
+- **Demo authentication only** — select a user to sign in; no passwords; roles not enforced on endpoints
 - **No pagination** — all tickets loaded in list view
-- **Client-selected `CreatedById`** — identity is chosen from dropdown, not from login
+- **No Blazor route guards** — list/detail pages are public; unsigned users get 401 on mutations
 - LocalDB / HTTP dev configuration — not production-hardened
 
 See `code-review-notes.md` and `review-fixes.md` for review findings and targeted fixes.
