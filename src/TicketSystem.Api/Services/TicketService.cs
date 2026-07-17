@@ -67,10 +67,10 @@ public class TicketService : ITicketService
         return MapToDetailResponse(ticket);
     }
 
-    public async Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto, CancellationToken cancellationToken = default)
+    public async Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto, int createdById, CancellationToken cancellationToken = default)
     {
         ValidatePriority(dto.Priority);
-        await ValidateUserExistsAsync(dto.CreatedById, "createdById", cancellationToken);
+        await ValidateUserExistsAsync(createdById, "createdById", cancellationToken);
 
         if (dto.AssignedToId.HasValue)
         {
@@ -85,7 +85,7 @@ public class TicketService : ITicketService
             Priority = dto.Priority,
             Status = TicketStatus.Open.ToString(),
             AssignedToId = dto.AssignedToId,
-            CreatedById = dto.CreatedById,
+            CreatedById = createdById,
             CreatedAt = now,
             UpdatedAt = now
         };

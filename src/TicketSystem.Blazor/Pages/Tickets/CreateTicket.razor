@@ -57,17 +57,6 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="creator">Created By</label>
-            <InputSelect id="creator" class="form-select" @bind-Value="model.CreatedById">
-                @foreach (var user in users)
-                {
-                    <option value="@user.Id">@user.Name</option>
-                }
-            </InputSelect>
-            <ValidationMessage For="() => model.CreatedById" />
-        </div>
-
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
             <div class="alert alert-error">@errorMessage</div>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.AspNetCore.Components.Authorization;
 using TicketSystem.Blazor;
 using TicketSystem.Blazor.Services;
 
@@ -20,6 +21,11 @@ builder.Services.AddScoped(_ =>
     return client;
 });
 
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ApiClientHelper>();
 builder.Services.AddScoped<ITicketApiService, TicketApiService>();
 builder.Services.AddScoped<ICommentApiService, CommentApiService>();
@@ -28,4 +34,9 @@ builder.Services.AddScoped<ITicketWorkflowService, TicketWorkflowService>();
 builder.Services.AddScoped<ITicketDisplayService, TicketDisplayService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+var authService = host.Services.GetRequiredService<IAuthService>();
+await authService.InitializeAsync();
+
+await host.RunAsync();

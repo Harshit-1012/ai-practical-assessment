@@ -1,4 +1,7 @@
-﻿<nav class="sidebar-nav">
+﻿@inject NavigationManager Navigation
+@inject IAuthService AuthService
+
+<nav class="sidebar-nav">
     <div class="sidebar-nav__header">
         <span class="sidebar-nav__title">Navigation</span>
     </div>
@@ -11,4 +14,14 @@
         <span class="sidebar-nav__icon" aria-hidden="true">＋</span>
         New Ticket
     </NavLink>
+    <NavLink class="sidebar-nav__link" href="/login">
+        <span class="sidebar-nav__icon" aria-hidden="true">🔐</span>
+        Sign In
+    </NavLink>
 </nav>
+
+@code {
+    private AuthenticatedUser? currentUser;
+
+    protected override async Task OnInitializedAsync() => currentUser = await AuthService.GetCurrentUserAsync();
+}

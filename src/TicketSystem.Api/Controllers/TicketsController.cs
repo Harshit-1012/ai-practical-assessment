@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketSystem.Api.DTOs;
+using TicketSystem.Api.Extensions;
 using TicketSystem.Api.Services;
 
 namespace TicketSystem.Api.Controllers;
@@ -32,15 +34,17 @@ public class TicketsController : ControllerBase
         return Ok(ticket);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<TicketResponseDto>> CreateTicket(
         [FromBody] CreateTicketDto dto,
         CancellationToken cancellationToken)
     {
-        var ticket = await _ticketService.CreateTicketAsync(dto, cancellationToken);
+        var ticket = await _ticketService.CreateTicketAsync(dto, User.GetUserId(), cancellationToken);
         return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, ticket);
     }
 
+    [Authorize]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<TicketResponseDto>> UpdateTicket(
         int id,
@@ -51,6 +55,7 @@ public class TicketsController : ControllerBase
         return Ok(ticket);
     }
 
+    [Authorize]
     [HttpPut("{id:int}/status")]
     public async Task<ActionResult<TicketResponseDto>> ChangeStatus(
         int id,

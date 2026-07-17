@@ -16,7 +16,4 @@ public class CreateTicketRequest
     public string Priority { get; set; } = "Medium";
 
     public int? AssignedToId { get; set; }
-
-    [Required(ErrorMessage = "Creator is required.")]
-    public int CreatedById { get; set; } = 3;
 }

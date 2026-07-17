@@ -6,7 +6,7 @@ public interface ITicketService
 {
     Task<IReadOnlyList<TicketResponseDto>> GetTicketsAsync(string? status, string? keyword, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> GetTicketByIdAsync(int id, CancellationToken cancellationToken = default);
-    Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto, CancellationToken cancellationToken = default);
+    Task<TicketResponseDto> CreateTicketAsync(CreateTicketDto dto, int createdById, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> UpdateTicketAsync(int id, UpdateTicketDto dto, CancellationToken cancellationToken = default);
     Task<TicketResponseDto> ChangeStatusAsync(int id, ChangeTicketStatusDto dto, CancellationToken cancellationToken = default);
 }
