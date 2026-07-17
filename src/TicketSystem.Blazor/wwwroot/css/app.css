@@ -116,6 +116,10 @@ p {
     box-shadow: var(--shadow-sm);
 }
 
+.form-card--narrow {
+    max-width: 28rem;
+}
+
 .form-group {
     margin-bottom: 1.25rem;
 }

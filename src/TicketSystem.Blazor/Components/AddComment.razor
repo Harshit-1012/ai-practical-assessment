@@ -18,7 +18,6 @@
 
 @code {
     [Parameter] public int TicketId { get; set; }
-    [Parameter] public int DefaultUserId { get; set; } = 3;
     [Parameter] public EventCallback OnCommentAdded { get; set; }
 
     [Inject] private ICommentApiService CommentService { get; set; } = default!;
@@ -27,11 +26,6 @@
     private readonly CreateCommentRequest model = new();
     private bool IsSubmitting;
     private string? ErrorMessage;
-
-    protected override void OnParametersSet()
-    {
-        model.CreatedById = DefaultUserId;
-    }
 
     private async Task HandleSubmit()
     {

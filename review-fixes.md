@@ -148,21 +148,25 @@ Classic Blazor routing bug with a minimal, well-understood fix; directly affects
 
 ## Deferred Suggestions
 
-### Deferred Group A: Authentication & Identity Trust (Stretch / Out of Core Scope)
+### Deferred Group A: Authentication & Identity Trust — **Implemented (Stretch, 2026-07-16)**
 
 **Source:** AI Code Review — Security High  
-**Findings deferred:**
-- No authentication or authorization on API or Blazor routes
-- Client-supplied `CreatedById` trusted on ticket/comment create (API)
-- "Created By" dropdown allows impersonation without login
-- No `AuthenticationStateProvider`, `AuthorizeRouteView`, or role-based UI restrictions
-- No role-based access control (Admin/Agent/User modeled but not enforced)
+**Originally deferred in Phase 9; implemented as Stretch feature after Core completion.**
 
-**Reason for Deferring:**  
-`spec.md` lists **authentication as Stretch**, not Core. The mandatory Core acceptance criteria do not require login, JWT, or protected routes. Implementing auth properly would consume significant time and touch every endpoint and page. The comment-author fix (Fix #1) improves the worst UI hardcoding without pretending to solve server-side identity.
+**Scope implemented:**
+- `POST /api/auth/login` — demo sign-in by selecting a seeded user (no password)
+- JWT issued on login; token stored in Blazor `localStorage` and sent as `Authorization: Bearer`
+- `[Authorize]` on mutation endpoints only (ticket create/update/status, comment create); read endpoints remain anonymous
+- `CreatedById` derived from authenticated user claims on the server (removed from create DTOs and UI dropdowns)
+- Blazor `/login` page, `AuthenticationStateProvider`, signed-in user shown in top bar
+
+**Still deferred (not in scope):**
+- Role-based authorization (`[Authorize(Roles = ...)]`) — roles are in JWT claims but not enforced
+- `AuthorizeRouteView` / protected Blazor routes — browsing works without login; mutations return 401 if unsigned
+- Password-based login
 
 **When to Revisit:**  
-Stretch phase or production hardening — derive `CreatedById` from authenticated claims, add `[Authorize]` and role policies.
+Production hardening — real passwords, role policies, protected UI routes, restrict `GET /api/users`.
 
 ---
 
@@ -255,7 +259,8 @@ Manual UI pass before demo; address if time remains after Phase 10 documentation
 ## Changes by Category
 
 ### Security Fixes
-- Fix #1 (partial): Removed hardcoded comment author; user must explicitly select author in UI *(full auth/identity trust still deferred — Group A)*
+- Fix #1 (partial): Removed hardcoded comment author; user must explicitly select author in UI *(superseded by Stretch auth — `CreatedById` now from JWT claims)*
+- **Stretch auth (2026-07-16):** Demo JWT login, mutation endpoints protected, server-side identity
 
 ### Performance Improvements
 - *None applied in this pass*
@@ -355,6 +360,6 @@ Manual UI pass before demo; address if time remains after Phase 10 documentation
 ## Sign-off
 
 **Fixes Applied By:** Harshit Gupta  
-**Date:** 2026-07-16  
+**Date:** 2026-07-17  
 **Re-review Required:** NO (for Core submission; YES before any production deployment)  
 **Status:** Complete (Phase 9 refinement — targeted fixes applied; remaining items deferred)

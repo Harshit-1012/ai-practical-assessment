@@ -8,31 +8,27 @@ namespace TicketSystem.Tests.Helpers;
 
 public static class TestDataSeeder
 {
-    public const int DefaultCreatedById = 3;
+    public const int DefaultAuthenticatedUserId = 3;
     public const int DefaultAssignedToId = 2;
 
     public static CreateTicketDto CreateValidTicketDto(
         string title = "Integration test ticket",
         string description = "Ticket created for integration testing",
         string priority = "Medium",
-        int? assignedToId = DefaultAssignedToId,
-        int createdById = DefaultCreatedById) =>
+        int? assignedToId = DefaultAssignedToId) =>
         new()
         {
             Title = title,
             Description = description,
             Priority = priority,
-            AssignedToId = assignedToId,
-            CreatedById = createdById
+            AssignedToId = assignedToId
         };
 
     public static CreateCommentDto CreateValidCommentDto(
-        string message = "Integration test comment",
-        int createdById = DefaultCreatedById) =>
+        string message = "Integration test comment") =>
         new()
         {
-            Message = message,
-            CreatedById = createdById
+            Message = message
         };
 
     public static async Task<int> SeedTicketAsync(
@@ -52,7 +48,7 @@ public static class TestDataSeeder
             Priority = TicketPriority.Medium.ToString(),
             Status = status,
             AssignedToId = DefaultAssignedToId,
-            CreatedById = DefaultCreatedById,
+            CreatedById = DefaultAuthenticatedUserId,
             CreatedAt = now,
             UpdatedAt = now
         };

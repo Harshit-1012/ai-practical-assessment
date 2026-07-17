@@ -31,7 +31,7 @@ public class CommentIntegrationTests : IntegrationTestBase
         Assert.True(body.Id > 0);
         Assert.Equal(ticket.Id, body.TicketId);
         Assert.Equal(commentDto.Message, body.Message);
-        Assert.Equal(commentDto.CreatedById, body.CreatedById);
+        Assert.Equal(TestDataSeeder.DefaultAuthenticatedUserId, body.CreatedById);
     }
 
     [Fact]

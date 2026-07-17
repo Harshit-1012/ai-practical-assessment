@@ -27,7 +27,7 @@ public class TicketCrudTests : IntegrationTestBase
         Assert.Equal(dto.Description, body.Description);
         Assert.Equal(dto.Priority, body.Priority);
         Assert.Equal("Open", body.Status);
-        Assert.Equal(dto.CreatedById, body.CreatedById);
+        Assert.Equal(TestDataSeeder.DefaultAuthenticatedUserId, body.CreatedById);
     }
 
     [Fact]

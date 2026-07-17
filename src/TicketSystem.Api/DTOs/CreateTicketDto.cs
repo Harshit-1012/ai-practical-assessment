@@ -17,7 +17,4 @@ public class CreateTicketDto
     public required string Priority { get; set; }
 
     public int? AssignedToId { get; set; }
-
-    [Required]
-    public int CreatedById { get; set; }
 }

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketSystem.Api.DTOs;
+using TicketSystem.Api.Extensions;
 using TicketSystem.Api.Services;
 
 namespace TicketSystem.Api.Controllers;
@@ -24,13 +26,14 @@ public class CommentsController : ControllerBase
         return Ok(comments);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<CommentResponseDto>> CreateComment(
         int ticketId,
         [FromBody] CreateCommentDto dto,
         CancellationToken cancellationToken)
     {
-        var comment = await _commentService.CreateCommentAsync(ticketId, dto, cancellationToken);
+        var comment = await _commentService.CreateCommentAsync(ticketId, dto, User.GetUserId(), cancellationToken);
         return CreatedAtAction(nameof(GetComments), new { ticketId }, comment);
     }
 }

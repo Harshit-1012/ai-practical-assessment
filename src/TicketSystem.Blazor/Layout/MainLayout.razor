@@ -1,4 +1,8 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
 <div class="app-shell">
     <aside class="sidebar">
@@ -14,6 +18,17 @@
                     <span class="topbar__tagline">Support Ticket Management</span>
                 </div>
             </div>
+            <div class="topbar__auth">
+                @if (currentUser is not null)
+                {
+                    <span class="topbar__user">@currentUser.Name (@currentUser.Role)</span>
+                    <button type="button" class="btn btn-link" @onclick="HandleLogout">Sign Out</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-link" @onclick="@(() => Navigation.NavigateTo("/login"))">Sign In</button>
+                }
+            </div>
         </header>
 
         <main class="content-area">
@@ -23,3 +38,31 @@
 </div>
 
 <ToastContainer />
+
+@code {
+    private AuthenticatedUser? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await LoadUserAsync();
+    }
+
+    private async void OnAuthenticationStateChanged(Task authStateTask)
+    {
+        await authStateTask;
+        await LoadUserAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadUserAsync() => currentUser = await AuthService.GetCurrentUserAsync();
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        currentUser = null;
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose() => AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+}

@@ -1,0 +1,106 @@
+@page "/login"
+@inject IAuthService AuthService
+@inject IUserApiService UserService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Sign In</h1>
+        <p class="page-subtitle">Select a user to continue (demo authentication)</p>
+    </div>
+</div>
+
+<LoadingSpinner IsLoading="isLoadingUsers" Message="Loading users..." />
+
+@if (!isLoadingUsers)
+{
+    <EditForm Model="model" OnValidSubmit="HandleLogin" class="form-card form-card--narrow">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label class="form-label" for="user">Sign in as</label>
+            <InputSelect id="user" class="form-select" @bind-Value="selectedUserId">
+                @foreach (var user in users)
+                {
+                    <option value="@user.Id">@user.Name (@user.Role)</option>
+                }
+            </InputSelect>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/tickets"))">Cancel</button>
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @(isSubmitting ? "Signing in..." : "Sign In")
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private readonly LoginFormModel model = new();
+    private readonly List<UserDto> users = [];
+    private string selectedUserId = "3";
+    private bool isLoadingUsers = true;
+    private bool isSubmitting;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users.AddRange(await UserService.GetUsersAsync());
+            if (users.Count > 0)
+            {
+                selectedUserId = users[0].Id.ToString();
+            }
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            isLoadingUsers = false;
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
+        if (!int.TryParse(selectedUserId, out var userId))
+        {
+            errorMessage = "Please select a user.";
+            isSubmitting = false;
+            return;
+        }
+
+        var success = await AuthService.LoginAsync(userId);
+        if (success)
+        {
+            Notifications.ShowSuccess("Signed in successfully.");
+            Navigation.NavigateTo("/tickets");
+        }
+        else
+        {
+            errorMessage = "Sign in failed. Please try again.";
+            Notifications.ShowError(errorMessage);
+        }
+
+        isSubmitting = false;
+    }
+
+    private sealed class LoginFormModel
+    {
+    }
+}

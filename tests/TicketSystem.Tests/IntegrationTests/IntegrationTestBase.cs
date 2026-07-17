@@ -1,18 +1,23 @@
+using TicketSystem.Tests.Helpers;
+
 namespace TicketSystem.Tests.IntegrationTests;
 
 [Collection(IntegrationTestCollection.Name)]
-public abstract class IntegrationTestBase : IAsyncLifetime
+public abstract class IntegrationTestBase
 {
     protected IntegrationTestBase(CustomWebApplicationFactory factory)
     {
         Factory = factory;
         Client = factory.CreateClient();
+        ResetAndAuthenticateAsync().GetAwaiter().GetResult();
     }
 
     protected CustomWebApplicationFactory Factory { get; }
     protected HttpClient Client { get; }
 
-    public async Task InitializeAsync() => await Factory.ResetDatabaseAsync();
-
-    public Task DisposeAsync() => Task.CompletedTask;
+    private async Task ResetAndAuthenticateAsync()
+    {
+        await Factory.ResetDatabaseAsync();
+        await AuthTestHelper.AuthenticateAsUserAsync(Client);
+    }
 }

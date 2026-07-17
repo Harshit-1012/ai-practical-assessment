@@ -34,16 +34,17 @@ public class CommentService : ICommentService
     public async Task<CommentResponseDto> CreateCommentAsync(
         int ticketId,
         CreateCommentDto dto,
+        int createdById,
         CancellationToken cancellationToken = default)
     {
         await EnsureTicketExistsAsync(ticketId, cancellationToken);
-        await EnsureUserExistsAsync(dto.CreatedById, cancellationToken);
+        await EnsureUserExistsAsync(createdById, cancellationToken);
 
         var comment = new Comment
         {
             TicketId = ticketId,
             Message = dto.Message.Trim(),
-            CreatedById = dto.CreatedById,
+            CreatedById = createdById,
             CreatedAt = DateTime.UtcNow
         };
 
