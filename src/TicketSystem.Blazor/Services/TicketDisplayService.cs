@@ -10,6 +10,9 @@ public interface ITicketDisplayService
     string GetPriorityBadgeClass(string priority);
     IReadOnlyList<string> GetPriorityOptions();
     IReadOnlyList<(string Value, string Label)> GetStatusFilterOptions();
+    IReadOnlyList<(string Value, string Label)> GetPriorityFilterOptions();
+    IReadOnlyList<(string Value, string Label)> GetSortByOptions();
+    IReadOnlyList<(string Value, string Label)> GetSortDirectionOptions();
     string GetAssigneeDisplay(string? assigneeName);
 }
 
@@ -78,6 +81,28 @@ public class TicketDisplayService : ITicketDisplayService
         ("Resolved", "Resolved"),
         ("Closed", "Closed"),
         ("Cancelled", "Cancelled")
+    ];
+
+    public IReadOnlyList<(string Value, string Label)> GetPriorityFilterOptions() =>
+    [
+        ("All", "All Priorities"),
+        ("Low", "Low"),
+        ("Medium", "Medium"),
+        ("High", "High"),
+        ("Critical", "Critical")
+    ];
+
+    public IReadOnlyList<(string Value, string Label)> GetSortByOptions() =>
+    [
+        ("CreatedAt", "Created Date"),
+        ("Priority", "Priority"),
+        ("Status", "Status")
+    ];
+
+    public IReadOnlyList<(string Value, string Label)> GetSortDirectionOptions() =>
+    [
+        ("desc", "Descending"),
+        ("asc", "Ascending")
     ];
 
     public string GetAssigneeDisplay(string? assigneeName) =>

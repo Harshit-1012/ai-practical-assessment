@@ -21,9 +21,25 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<TicketResponseDto>>> GetTickets(
         [FromQuery] string? status,
         [FromQuery] string? keyword,
+        [FromQuery] string? priority,
+        [FromQuery] int? assignedToId,
+        [FromQuery] bool unassignedOnly,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDirection,
         CancellationToken cancellationToken)
     {
-        var tickets = await _ticketService.GetTicketsAsync(status, keyword, cancellationToken);
+        var query = new TicketListQueryDto
+        {
+            Status = status,
+            Keyword = keyword,
+            Priority = priority,
+            AssignedToId = assignedToId,
+            UnassignedOnly = unassignedOnly,
+            SortBy = sortBy,
+            SortDirection = sortDirection
+        };
+
+        var tickets = await _ticketService.GetTicketsAsync(query, cancellationToken);
         return Ok(tickets);
     }
 

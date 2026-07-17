@@ -19,39 +19,130 @@ public class TicketService : ITicketService
     }
 
     public async Task<IReadOnlyList<TicketResponseDto>> GetTicketsAsync(
-        string? status,
-        string? keyword,
+        TicketListQueryDto query,
         CancellationToken cancellationToken = default)
     {
-        if (!string.IsNullOrWhiteSpace(status) && !TicketStatusExtensions.IsValid(status))
+        if (!string.IsNullOrWhiteSpace(query.Status) && !TicketStatusExtensions.IsValid(query.Status))
         {
             throw new BusinessValidationException("status", "Status must be one of: Open, InProgress, Resolved, Closed, Cancelled.");
         }
 
-        var query = _context.Tickets
+        if (!string.IsNullOrWhiteSpace(query.Priority) && !TicketPriorityExtensions.IsValid(query.Priority))
+        {
+            throw new BusinessValidationException("priority", "Priority must be one of: Low, Medium, High, Critical.");
+        }
+
+        if (query.AssignedToId.HasValue && query.UnassignedOnly)
+        {
+            throw new BusinessValidationException("assignedToId", "Specify either assignedToId or unassignedOnly, not both.");
+        }
+
+        if (query.AssignedToId.HasValue)
+        {
+            await ValidateUserExistsAsync(query.AssignedToId.Value, "assignedToId", cancellationToken);
+        }
+
+        var sortBy = string.IsNullOrWhiteSpace(query.SortBy) ? "CreatedAt" : query.SortBy;
+        var sortDirection = string.IsNullOrWhiteSpace(query.SortDirection) ? "desc" : query.SortDirection;
+
+        if (!IsValidSortBy(sortBy))
+        {
+            throw new BusinessValidationException("sortBy", "SortBy must be one of: CreatedAt, Priority, Status.");
+        }
+
+        if (!IsValidSortDirection(sortDirection))
+        {
+            throw new BusinessValidationException("sortDirection", "SortDirection must be asc or desc.");
+        }
+
+        var ticketQuery = _context.Tickets
             .AsNoTracking()
             .Include(t => t.AssignedTo)
             .Include(t => t.CreatedBy)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (!string.IsNullOrWhiteSpace(query.Status))
         {
-            query = query.Where(t => t.Status == status);
+            ticketQuery = ticketQuery.Where(t => t.Status == query.Status);
         }
 
-        if (!string.IsNullOrWhiteSpace(keyword))
+        if (!string.IsNullOrWhiteSpace(query.Priority))
         {
-            var term = keyword.Trim();
-            query = query.Where(t =>
+            ticketQuery = ticketQuery.Where(t => t.Priority == query.Priority);
+        }
+
+        if (query.UnassignedOnly)
+        {
+            ticketQuery = ticketQuery.Where(t => t.AssignedToId == null);
+        }
+        else if (query.AssignedToId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(t => t.AssignedToId == query.AssignedToId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var term = query.Keyword.Trim();
+            ticketQuery = ticketQuery.Where(t =>
                 t.Title.Contains(term) || t.Description.Contains(term));
         }
 
-        var tickets = await query
-            .OrderByDescending(t => t.CreatedAt)
-            .ToListAsync(cancellationToken);
+        var tickets = await ticketQuery.ToListAsync(cancellationToken);
+        var sorted = ApplySorting(tickets, sortBy, sortDirection);
 
-        return tickets.Select(MapToResponse).ToList();
+        return sorted.Select(MapToResponse).ToList();
     }
+
+    private static bool IsValidSortBy(string sortBy) =>
+        sortBy.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase)
+        || sortBy.Equals("Priority", StringComparison.OrdinalIgnoreCase)
+        || sortBy.Equals("Status", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsValidSortDirection(string sortDirection) =>
+        sortDirection.Equals("asc", StringComparison.OrdinalIgnoreCase)
+        || sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
+
+    private static List<Ticket> ApplySorting(List<Ticket> tickets, string sortBy, string sortDirection)
+    {
+        var descending = sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
+
+        if (sortBy.Equals("Priority", StringComparison.OrdinalIgnoreCase))
+        {
+            return descending
+                ? tickets.OrderByDescending(t => GetPriorityOrder(t.Priority)).ThenByDescending(t => t.CreatedAt).ToList()
+                : tickets.OrderBy(t => GetPriorityOrder(t.Priority)).ThenByDescending(t => t.CreatedAt).ToList();
+        }
+
+        if (sortBy.Equals("Status", StringComparison.OrdinalIgnoreCase))
+        {
+            return descending
+                ? tickets.OrderByDescending(t => GetStatusOrder(t.Status)).ThenByDescending(t => t.CreatedAt).ToList()
+                : tickets.OrderBy(t => GetStatusOrder(t.Status)).ThenByDescending(t => t.CreatedAt).ToList();
+        }
+
+        return descending
+            ? tickets.OrderByDescending(t => t.CreatedAt).ToList()
+            : tickets.OrderBy(t => t.CreatedAt).ToList();
+    }
+
+    private static int GetPriorityOrder(string priority) => priority switch
+    {
+        nameof(TicketPriority.Low) => 0,
+        nameof(TicketPriority.Medium) => 1,
+        nameof(TicketPriority.High) => 2,
+        nameof(TicketPriority.Critical) => 3,
+        _ => 99
+    };
+
+    private static int GetStatusOrder(string status) => status switch
+    {
+        nameof(TicketStatus.Open) => 0,
+        nameof(TicketStatus.InProgress) => 1,
+        nameof(TicketStatus.Resolved) => 2,
+        nameof(TicketStatus.Closed) => 3,
+        nameof(TicketStatus.Cancelled) => 4,
+        _ => 99
+    };
 
     public async Task<TicketResponseDto> GetTicketByIdAsync(int id, CancellationToken cancellationToken = default)
     {
