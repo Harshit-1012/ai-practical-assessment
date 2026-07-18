@@ -350,3 +350,85 @@ before running tests
 
 **Outcome:** Solution builds successfully with 0 warnings/errors. 
 Integration tests not run during this pass.
+
+---
+
+### Prompt #8: Re-implement Review Fixes #2 and #3 (Absent from Codebase)
+
+**Date:** 2026-07-18
+**Context Provided:** `review-fixes.md` documented Fix #2 (whitespace 
+validation) and Fix #3 (terminal ticket edit guard) as implemented in 
+Phase 9; codebase search confirmed both were **absent** — no 
+`NotWhitespaceAttribute` file/class anywhere in `src/`, no `Validation/` 
+folder, no terminal-status guard in `TicketService.UpdateTicketAsync`, 
+and `TicketDetail.razor` always showed the Edit button. References 
+existed only in documentation (`review-fixes.md`, `pr-description.md`, 
+`ai-prompts/code-review.md`).
+
+**Prompt:**
+```
+Fix #2 and Fix #3 from review-fixes.md are documented as implemented 
+but confirmed absent from the codebase. Re-implement both properly:
+
+1. Fix #2 — Whitespace-only input validation:
+   - Create NotWhitespaceAttribute (custom ValidationAttribute) that 
+     rejects null, empty, or whitespace-only strings
+   - Apply it to Title, Description on CreateTicketDto and 
+     UpdateTicketDto, and Message on CreateCommentDto
+   - Add defensive trim-and-reject checks in TicketService and 
+     CommentService before save, throwing BusinessValidationException 
+     with field-level errors
+
+2. Fix #3 — Block editing terminal-state tickets:
+   - Add a guard at the start of TicketService.UpdateTicketAsync that 
+     throws BusinessValidationException when ticket.Status is Closed 
+     or Cancelled
+   - In Blazor, hide the Edit button on TicketDetail.razor when the 
+     ticket is in a terminal status
+
+After implementing both, run the full test suite (integration + the 
+new unit tests) to confirm everything passes, including the existing 
+28 integration tests and the new unit tests. Also verify manually via 
+Swagger that whitespace-only input and terminal-ticket edits are 
+correctly rejected.
+
+Stop after implementation so I can review before we finalize.
+```
+
+**AI Response Summary:**
+**Discovery:** Full-repo search for `NotWhitespace` found zero 
+implementation files; `UpdateTicketAsync` had no `Closed`/`Cancelled` 
+guard; UI had no terminal-state check on Edit.
+
+**Re-implementation:** Created `Validation/NotWhitespaceAttribute.cs` 
+and `Validation/InputValidation.cs` (`RequireTrimmedNonWhitespace`); 
+applied `[NotWhitespace]` to `CreateTicketDto`, `UpdateTicketDto`, 
+`CreateCommentDto`; added service-level guards in `TicketService` 
+(create/update) and `CommentService` (create); added terminal-status 
+guard in `UpdateTicketAsync`; hid Edit button on `TicketDetail.razor` 
+for `Closed`/`Cancelled`. Added whitespace unit tests to 
+`TicketDtoValidationTests`. Fixed one pre-existing unit test assertion 
+in `TicketStateMachineTests` (message text mismatch).
+
+**Verification:** `dotnet test` — **110/110 passed** (28 integration + 
+82 unit). Manual API checks against running server: `POST /api/tickets` 
+with whitespace-only title → **400** with validation errors; 
+`PUT /api/tickets/{id}` on a Closed ticket → **400** with 
+`"Tickets in Closed status cannot be edited."`
+
+**What Was Accepted:**
+- `NotWhitespaceAttribute` + `InputValidation` helper pattern
+- Dual-layer validation (DTO attributes + service guards)
+- Terminal edit blocked in API and hidden in UI
+
+**What Was Changed:** Minor fix to `TicketStateMachineTests` assertion 
+(unrelated message expectation)
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Fix #2 and Fix #3 now match `review-fixes.md` in the 
+actual codebase. All 110 tests passing; manual API verification 
+confirmed whitespace rejection and terminal-edit blocking.
+

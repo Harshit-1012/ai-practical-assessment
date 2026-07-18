@@ -5,6 +5,8 @@ using TicketSystem.Api.Exceptions;
 using TicketSystem.Api.Models;
 using TicketSystem.Api.Models.Enums;
 
+using TicketSystem.Api.Validation;
+
 namespace TicketSystem.Api.Services;
 
 public class TicketService : ITicketService
@@ -168,11 +170,14 @@ public class TicketService : ITicketService
             await ValidateUserExistsAsync(dto.AssignedToId.Value, "assignedToId", cancellationToken);
         }
 
+        var title = InputValidation.RequireTrimmedNonWhitespace(dto.Title, "title");
+        var description = InputValidation.RequireTrimmedNonWhitespace(dto.Description, "description");
+
         var now = DateTime.UtcNow;
         var ticket = new Ticket
         {
-            Title = dto.Title.Trim(),
-            Description = dto.Description.Trim(),
+            Title = title,
+            Description = description,
             Priority = dto.Priority,
             Status = TicketStatus.Open.ToString(),
             AssignedToId = dto.AssignedToId,
@@ -197,13 +202,20 @@ public class TicketService : ITicketService
             throw new NotFoundException("Ticket not found.");
         }
 
+        if (ticket.Status is nameof(TicketStatus.Closed) or nameof(TicketStatus.Cancelled))
+        {
+            throw new BusinessValidationException(
+                "status",
+                $"Tickets in {ticket.Status} status cannot be edited.");
+        }
+
         if (dto.AssignedToId.HasValue)
         {
             await ValidateUserExistsAsync(dto.AssignedToId.Value, "assignedToId", cancellationToken);
         }
 
-        ticket.Title = dto.Title.Trim();
-        ticket.Description = dto.Description.Trim();
+        ticket.Title = InputValidation.RequireTrimmedNonWhitespace(dto.Title, "title");
+        ticket.Description = InputValidation.RequireTrimmedNonWhitespace(dto.Description, "description");
         ticket.Priority = dto.Priority;
         ticket.AssignedToId = dto.AssignedToId;
         ticket.UpdatedAt = DateTime.UtcNow;

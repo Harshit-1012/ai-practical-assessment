@@ -17,9 +17,12 @@
             <h1>@ticket.Title</h1>
             <p class="page-subtitle">Ticket #@ticket.Id</p>
         </div>
-        <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}/edit"))">
-            Edit
-        </button>
+        @if (!IsTerminalStatus(ticket.Status))
+        {
+            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}/edit"))">
+                Edit
+            </button>
+        }
     </div>
 
     <div class="detail-layout">
@@ -120,4 +123,7 @@
             isChangingStatus = false;
         }
     }
+
+    private static bool IsTerminalStatus(string status) =>
+        status is "Closed" or "Cancelled";
 }

@@ -4,6 +4,8 @@ using TicketSystem.Api.DTOs;
 using TicketSystem.Api.Exceptions;
 using TicketSystem.Api.Models;
 
+using TicketSystem.Api.Validation;
+
 namespace TicketSystem.Api.Services;
 
 public class CommentService : ICommentService
@@ -40,10 +42,12 @@ public class CommentService : ICommentService
         await EnsureTicketExistsAsync(ticketId, cancellationToken);
         await EnsureUserExistsAsync(createdById, cancellationToken);
 
+        var message = InputValidation.RequireTrimmedNonWhitespace(dto.Message, "message");
+
         var comment = new Comment
         {
             TicketId = ticketId,
-            Message = dto.Message.Trim(),
+            Message = message,
             CreatedById = createdById,
             CreatedAt = DateTime.UtcNow
         };
