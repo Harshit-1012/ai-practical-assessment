@@ -5,7 +5,7 @@ using TicketSystem.Tests.Helpers;
 
 namespace TicketSystem.Tests.IntegrationTests;
 
-public class StateMachineTransitionTests : IntegrationTestBase
+public class StateMachineTransitionTests : AgentIntegrationTestBase
 {
     public StateMachineTransitionTests(CustomWebApplicationFactory factory)
         : base(factory)

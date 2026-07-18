@@ -5,12 +5,32 @@
 @inject ITicketDisplayService DisplayService
 @inject INotificationService Notifications
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Edit Ticket</PageTitle>
 
 <LoadingSpinner IsLoading="isLoading" Message="Loading ticket..." />
 
-@if (!isLoading && ticket is not null)
+@if (!isLoading && !canManageTickets)
+{
+    <div class="page-header">
+        <div>
+            <h1>Edit Ticket</h1>
+            <p class="page-subtitle">Ticket #@TicketId</p>
+        </div>
+    </div>
+
+    <div class="alert alert-error permission-denied" role="alert">
+        You don't have permission to edit tickets.
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}"))">
+            Back to Ticket
+        </button>
+    </div>
+}
+else if (!isLoading && ticket is not null)
 {
     <div class="page-header">
         <div>
@@ -79,11 +99,21 @@
     private TicketDto? ticket;
     private bool isLoading = true;
     private bool isSubmitting;
+    private bool canManageTickets;
     private string? errorMessage;
     private string assignedToSelection = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canManageTickets = authState.User.IsInRole("Admin") || authState.User.IsInRole("Agent");
+
+        if (!canManageTickets)
+        {
+            isLoading = false;
+            return;
+        }
+
         try
         {
             users.AddRange(await UserService.GetUsersAsync());

@@ -9,6 +9,7 @@ namespace TicketSystem.Tests.Helpers;
 public static class TestDataSeeder
 {
     public const int DefaultAuthenticatedUserId = 3;
+    public const int DefaultAgentUserId = 2;
     public const int DefaultAssignedToId = 2;
 
     public static CreateTicketDto CreateValidTicketDto(

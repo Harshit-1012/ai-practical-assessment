@@ -66,6 +66,8 @@ public class TicketCrudTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.Created, createStatus);
         Assert.NotNull(created);
 
+        await AuthTestHelper.AuthenticateAsAgentAsync(Client);
+
         var updateDto = new UpdateTicketDto
         {
             Title = "Updated title",

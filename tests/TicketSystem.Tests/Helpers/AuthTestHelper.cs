@@ -5,9 +5,15 @@ namespace TicketSystem.Tests.Helpers;
 
 public static class AuthTestHelper
 {
+    public static Task AuthenticateAsUserAsync(HttpClient client) =>
+        AuthenticateAsUserAsync(client, TestDataSeeder.DefaultAuthenticatedUserId);
+
+    public static Task AuthenticateAsAgentAsync(HttpClient client) =>
+        AuthenticateAsUserAsync(client, TestDataSeeder.DefaultAgentUserId);
+
     public static async Task AuthenticateAsUserAsync(
         HttpClient client,
-        int userId = TestDataSeeder.DefaultAuthenticatedUserId)
+        int userId)
     {
         var (statusCode, loginResponse) = await client.PostJsonAsync<LoginResponseDto>(
             "/api/auth/login",
