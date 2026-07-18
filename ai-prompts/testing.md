@@ -62,3 +62,59 @@ Verified end-to-end through the browser (http://localhost:5036):
 
 **Result:** All Core acceptance criteria confirmed working through 
 manual UI testing, in addition to the 28 automated integration tests.
+
+---
+
+### Prompt #2: Stretch Unit Test Tier
+
+**Date:** 2026-07-18
+**Context Provided:** 28 integration tests in `IntegrationTests/`; Stretch 
+scope for a separate unit test tier per spec and review-fixes deferrals
+
+**Prompt:**
+```
+Add a unit test tier as a Stretch feature, separate from the existing 
+integration tests:
+- Unit tests for TicketStateMachine.CanTransition() and 
+  ValidateTransition() in isolation (no HTTP/database), covering every 
+  valid transition and every invalid transition pair
+- Unit tests for key validation logic (whitespace rejection, terminal 
+  ticket edit blocking) if easily testable in isolation
+
+Keep these clearly separate from IntegrationTests folder — put them in 
+a new UnitTests folder within TicketSystem.Tests. Don't modify any 
+existing integration tests or application code.
+
+Also log this exact prompt in ai-prompts/testing.md following the same 
+template as other entries.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+Added `tests/TicketSystem.Tests/UnitTests/` with three test classes (no 
+changes to integration tests or application code): `TicketStateMachineTests` 
+— 5 valid transitions, all 20 invalid pairs via generated `MemberData`, 
+plus `ValidateTransition` throw/no-throw and message assertions; 
+`TicketDtoValidationTests` — `[Required]`/`[MaxLength]` on 
+`CreateTicketDto`, `UpdateTicketDto`, `CreateCommentDto` via 
+`Validator.TryValidateObject`; `TicketEnumValidationTests` — 
+`TicketStatusExtensions.IsValid` and `TicketPriorityExtensions.IsValid`. 
+Whitespace-only and terminal-ticket edit guards are documented in 
+`review-fixes.md` but not present in current application code, so they 
+were not unit-tested without modifying `TicketService`.
+
+**What Was Accepted:**
+- `UnitTests/` folder separate from `IntegrationTests/`
+- Exhaustive state machine pair coverage without HTTP/DB
+- DTO and enum validation as isolated unit tests
+
+**What Was Changed:** None at implementation time — stopped for review 
+before running tests
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Test project builds successfully. Unit tests not run during 
+this pass.
