@@ -68,7 +68,14 @@ public class AuthService : IAuthService
 
     public async Task InitializeAsync()
     {
+        var token = await _tokenStorage.GetTokenAsync();
+        var user = await _tokenStorage.GetUserAsync();
+
+        if ((user is not null || !string.IsNullOrWhiteSpace(token)) && !AuthTokenHelper.IsTokenValid(token))
+        {
+            await _tokenStorage.ClearAsync();
+        }
+
         _authStateProvider.NotifyAuthenticationStateChanged();
-        await Task.CompletedTask;
     }
 }

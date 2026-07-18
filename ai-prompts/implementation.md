@@ -549,7 +549,7 @@ No API changes.
 **Iteration Count:** 1
 
 **Outcome:** Implementation complete; build verification pending user 
-review before running tests.
+review before running full test suite.
 
 ---
 
@@ -613,6 +613,68 @@ unchanged.
 - Sidebar slimmed to Dashboard-only primary nav
 - Accordion grouped by status with browse links to filtered list
 - Anonymous sign-in prompt plus Recently Updated fallback
+
+**What Was Changed:** None
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Implementation complete; build verification pending user 
+review before running tests.
+
+---
+
+### Prompt #12: Login-Required Blazor Routing
+
+**Date:** 2026-07-18
+**Context Provided:** JWT auth on API mutations; Blazor demo sign-in at 
+`/login` with `CustomAuthStateProvider` and `CascadingAuthenticationState`; 
+dashboard and ticket pages previously reachable without authentication.
+
+**Prompt:**
+```
+Change the app so unauthenticated users see only a login page — nothing 
+else should be visible before login:
+
+- Root "/" and all other routes should redirect to "/login" if the 
+  user is not authenticated
+- Use Blazor's AuthorizeRouteView / CascadingAuthenticationState 
+  (already partially set up) to enforce this
+- After successful login, redirect to /dashboard
+- Ensure the API's existing [Authorize] on mutation endpoints is 
+  unaffected — this is purely a Blazor-side routing/UI change
+- Keep the API's GET endpoints anonymous still (no API changes needed) 
+  — this only restricts what's visible in the Blazor UI
+
+Test thoroughly and confirm:
+1. Visiting any URL while logged out redirects to /login
+2. Login works and lands on /dashboard
+3. All pages (dashboard, tickets, ticket detail, create, edit) are 
+   reachable after login
+4. Logout correctly returns to the login-only state
+
+Also log this exact prompt in ai-prompts/implementation.md following 
+the same template as other entries.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+Configured `FallbackPolicy` requiring authenticated user in 
+`Program.cs`. Replaced `RouteView` with `AuthorizeRouteView` in 
+`App.razor` plus `RedirectToLogin` for unauthenticated access and 
+`LoginLayout` for login-only UI (no sidebar/topbar). Marked 
+`Login.razor` with `[AllowAnonymous]` and `@layout LoginLayout`; 
+removed Cancel-to-tickets; added returnUrl support and redirect when 
+already signed in. Updated `MainLayout` logout to `/login` with replace; 
+removed Sign In from sidebar/topbar. Simplified `Dashboard.razor` 
+anonymous fallbacks (page now auth-gated). No API changes.
+
+**What Was Accepted:**
+- Fallback authorization policy for all routes by default
+- Dedicated login layout without app chrome
+- returnUrl preservation on redirect to login
 
 **What Was Changed:** None
 
