@@ -20,7 +20,7 @@ public class TicketService : ITicketService
         _stateMachine = stateMachine;
     }
 
-    public async Task<IReadOnlyList<TicketResponseDto>> GetTicketsAsync(
+    public async Task<TicketListResponseDto> GetTicketsAsync(
         TicketListQueryDto query,
         CancellationToken cancellationToken = default)
     {
@@ -42,6 +42,20 @@ public class TicketService : ITicketService
         if (query.AssignedToId.HasValue)
         {
             await ValidateUserExistsAsync(query.AssignedToId.Value, "assignedToId", cancellationToken);
+        }
+
+        var pageNumber = query.PageNumber < TicketListQueryDto.DefaultPageNumber
+            ? TicketListQueryDto.DefaultPageNumber
+            : query.PageNumber;
+
+        if (query.PageSize < 1)
+        {
+            throw new BusinessValidationException("pageSize", "PageSize must be at least 1.");
+        }
+
+        if (query.PageSize > TicketListQueryDto.MaxPageSize)
+        {
+            throw new BusinessValidationException("pageSize", $"PageSize cannot exceed {TicketListQueryDto.MaxPageSize}.");
         }
 
         var sortBy = string.IsNullOrWhiteSpace(query.SortBy) ? "CreatedAt" : query.SortBy;
@@ -91,8 +105,23 @@ public class TicketService : ITicketService
 
         var tickets = await ticketQuery.ToListAsync(cancellationToken);
         var sorted = ApplySorting(tickets, sortBy, sortDirection);
+        var totalCount = sorted.Count;
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+        var currentPage = totalPages == 0 ? 1 : Math.Min(pageNumber, totalPages);
 
-        return sorted.Select(MapToResponse).ToList();
+        var pageItems = sorted
+            .Skip((currentPage - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(MapToResponse)
+            .ToList();
+
+        return new TicketListResponseDto
+        {
+            Items = pageItems,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            CurrentPage = currentPage
+        };
     }
 
     private static bool IsValidSortBy(string sortBy) =>

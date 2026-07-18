@@ -11,13 +11,12 @@ public class TicketApiService : ITicketApiService
         _api = api;
     }
 
-    public async Task<IReadOnlyList<TicketDto>> GetTicketsAsync(
+    public async Task<TicketListResult> GetTicketsAsync(
         TicketSearchCriteria? criteria = null,
         CancellationToken cancellationToken = default)
     {
         var query = BuildQueryString(criteria);
-        var tickets = await _api.GetAsync<List<TicketDto>>($"api/tickets{query}", cancellationToken);
-        return tickets;
+        return await _api.GetAsync<TicketListResult>($"api/tickets{query}", cancellationToken);
     }
 
     public Task<TicketDto> GetTicketByIdAsync(int id, CancellationToken cancellationToken = default) =>
@@ -34,12 +33,13 @@ public class TicketApiService : ITicketApiService
 
     private static string BuildQueryString(TicketSearchCriteria? criteria)
     {
-        if (criteria is null)
-        {
-            return string.Empty;
-        }
+        criteria ??= new TicketSearchCriteria();
 
-        var parts = new List<string>();
+        var parts = new List<string>
+        {
+            $"pageNumber={criteria.PageNumber}",
+            $"pageSize={criteria.PageSize}"
+        };
 
         if (!string.IsNullOrWhiteSpace(criteria.Keyword))
         {
@@ -75,6 +75,6 @@ public class TicketApiService : ITicketApiService
             parts.Add($"sortDirection={Uri.EscapeDataString(criteria.SortDirection)}");
         }
 
-        return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
+        return "?" + string.Join("&", parts);
     }
 }
