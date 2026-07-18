@@ -492,3 +492,133 @@ Pagination styles in `app.css`. Integration tests updated to deserialize
 
 **Outcome:** Implementation complete; build verification pending user 
 review before running full test suite.
+
+---
+
+### Prompt #10: Dashboard Page (Stretch / UX)
+
+**Date:** 2026-07-18
+**Context Provided:** Completed pagination and advanced filtering on 
+`GET /api/tickets`; Blazor ticket list with indigo/slate card-based UI; 
+JWT demo auth with optional signed-in user context.
+
+**Prompt:**
+```
+Add a simple dashboard page as a Stretch/UX enhancement:
+- New page at /dashboard (or as the default landing page after login)
+- KPI summary cards showing: Total Tickets, Open Tickets, In Progress, 
+  Resolved, Closed, Cancelled counts
+- A "My Tickets" or "Recently Updated" section showing the 5 most 
+  recently updated tickets
+- Optionally, a simple breakdown by priority (count per priority level)
+- Use the existing GET /api/tickets endpoint (with appropriate filters) 
+  to compute these — no new API endpoint needed unless genuinely useful
+- Match the existing indigo/slate theme and card-based design language 
+  already used in TicketList
+
+Keep this purely additive — don't modify existing pages' core logic, 
+routing, or the API's write endpoints. This should be a read-only 
+overview page.
+
+Also log this exact prompt in ai-prompts/implementation.md following 
+the same template as other entries.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+Added read-only `Dashboard.razor` at `/dashboard` with KPI cards 
+(total + per-status counts via filtered `GET /api/tickets` calls using 
+`TotalCount` metadata), priority breakdown (four filtered count calls), 
+and a recent-tickets section (`My Tickets` when signed in via 
+`assignedToId` filter, otherwise `Recently Updated`; top 5 by 
+`UpdatedAt` client-side from up to 50 fetched items). Styled with new 
+dashboard CSS matching existing indigo/slate card theme. Additive nav 
+link in `NavMenu`; `/` and post-login redirect now land on `/dashboard`. 
+No API changes.
+
+**What Was Accepted:**
+- Client-side aggregation from existing list endpoint
+- Dashboard as default landing page and post-login destination
+- Reused `ticket-card` components for recent tickets list
+
+**What Was Changed:** None
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Implementation complete; build verification pending user 
+review before running tests.
+
+---
+
+### Prompt #11: Dashboard UX Enhancements
+
+**Date:** 2026-07-18
+**Context Provided:** Initial dashboard at `/dashboard` with KPI cards, 
+priority breakdown, and a combined recent/my-tickets section; sidebar 
+still listed All Tickets and New Ticket; `GET /api/tickets` supports 
+filtering for aggregation.
+
+**Prompt:**
+```
+Enhance the dashboard with the following, keeping it additive and 
+low-risk:
+
+1. Remove "All Tickets" and "New Ticket" from the sidebar (NavMenu). 
+   Dashboard is now the primary landing page.
+
+2. On the Dashboard, add a "My Tickets" section:
+   - If signed in: show tickets assigned to the current user (via 
+     assignedToId filter on GET /api/tickets)
+   - If anonymous: show a prompt to sign in, or fall back to "Recently 
+     Updated" as it currently does
+
+3. Add a prominent button/link on the Dashboard (e.g., "View All 
+   Tickets" or "Browse Tickets") that navigates to /tickets — this is 
+   where the existing search, status/priority filter, sorting, and 
+   pagination UI already lives. Do NOT move that filtering UI onto the 
+   dashboard itself — keep /tickets as the dedicated browsing page.
+
+4. Add an accordion section on the Dashboard (below KPI cards) grouping 
+   tickets by status, each expandable to show a short ticket list, 
+   matching the existing indigo/slate theme.
+
+5. Since "All Tickets" is removed from the sidebar, ensure /tickets 
+   remains reachable via: (a) the new dashboard button, and (b) direct 
+   ticket detail navigation still works.
+
+Keep this purely additive/UI-only — no changes to API endpoints or 
+existing mutation logic.
+
+Also log this exact prompt in ai-prompts/implementation.md following 
+the same template as other entries.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+Removed All Tickets and New Ticket links from `NavMenu.razor` (Dashboard 
++ Sign In only). Enhanced `Dashboard.razor` with a prominent Browse 
+Tickets CTA bar, status accordion below KPI cards (expand/collapse per 
+status, up to 5 tickets each with link to filtered `/tickets`), 
+dedicated My Tickets section (assigned tickets when signed in; sign-in 
+prompt when anonymous), and separate Recently Updated fallback for 
+anonymous users. Added accordion, CTA, and sign-in card styles in 
+`app.css`. No API or route changes — `/tickets` and ticket detail URLs 
+unchanged.
+
+**What Was Accepted:**
+- Sidebar slimmed to Dashboard-only primary nav
+- Accordion grouped by status with browse links to filtered list
+- Anonymous sign-in prompt plus Recently Updated fallback
+
+**What Was Changed:** None
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Implementation complete; build verification pending user 
+review before running tests.
