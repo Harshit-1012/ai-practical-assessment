@@ -5,6 +5,7 @@
 @inject ITicketDisplayService DisplayService
 @inject INotificationService Notifications
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Ticket Details</PageTitle>
 
@@ -18,7 +19,7 @@
             <h1>@ticket.Title</h1>
             <p class="page-subtitle">Ticket #@ticket.Id</p>
         </div>
-        @if (!IsTerminalStatus(ticket.Status))
+        @if (canManageTickets && !IsTerminalStatus(ticket.Status))
         {
             <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo($"/tickets/{TicketId}/edit"))">
                 Edit
@@ -60,9 +61,16 @@
 
         <aside class="detail-sidebar">
             <div class="detail-card">
-                <StatusTransitionActions Actions="transitionActions"
-                                         IsBusy="isChangingStatus"
-                                         OnTransitionRequested="HandleStatusChange" />
+                @if (canManageTickets)
+                {
+                    <StatusTransitionActions Actions="transitionActions"
+                                             IsBusy="isChangingStatus"
+                                             OnTransitionRequested="HandleStatusChange" />
+                }
+                else
+                {
+                    <p class="permission-denied">You don't have permission to change ticket status.</p>
+                }
             </div>
         </aside>
     </div>
@@ -81,8 +89,19 @@
     private IReadOnlyList<StatusTransitionAction> transitionActions = [];
     private bool isLoading = true;
     private bool isChangingStatus;
+    private bool canManageTickets;
 
-    protected override async Task OnInitializedAsync() => await LoadTicketAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthorizationAsync();
+        await LoadTicketAsync();
+    }
+
+    private async Task LoadAuthorizationAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canManageTickets = authState.User.IsInRole("Admin") || authState.User.IsInRole("Agent");
+    }
 
     private async Task LoadTicketAsync()
     {

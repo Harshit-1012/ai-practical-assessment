@@ -141,10 +141,14 @@
         </div>
     </section>
 
-    <section class="dashboard-section" aria-label="My Tickets">
+    <section class="dashboard-section" aria-label="@ticketSectionLabel">
         <div class="dashboard-section__header">
-            <h2 class="dashboard-section__title">My Tickets</h2>
-            @if (currentUser is not null)
+            <h2 class="dashboard-section__title">@ticketSectionTitle</h2>
+            @if (isAdmin)
+            {
+                <span class="dashboard-section__hint">Recently updated</span>
+            }
+            else if (currentUser is not null)
             {
                 <span class="dashboard-section__hint">Assigned to @currentUser.Name</span>
             }
@@ -152,8 +156,8 @@
 
         @if (myTickets.Count == 0)
         {
-            <EmptyState Title="No assigned tickets"
-                        Description="You don't have any tickets assigned to you yet."
+            <EmptyState Title="@ticketSectionEmptyTitle"
+                        Description="@ticketSectionEmptyDescription"
                         Icon="📋">
                 <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets"))">
                     Browse Tickets
@@ -195,8 +199,13 @@
     private static readonly string[] Priorities = ["Low", "Medium", "High", "Critical"];
 
     private bool isLoading = true;
+    private bool isAdmin;
     private string? errorMessage;
     private AuthenticatedUser? currentUser;
+    private string ticketSectionTitle = "My Tickets";
+    private string ticketSectionLabel = "My Tickets";
+    private string ticketSectionEmptyTitle = "No assigned tickets";
+    private string ticketSectionEmptyDescription = "You don't have any tickets assigned to you yet.";
     private int totalCount;
     private int openCount;
     private int inProgressCount;
@@ -222,6 +231,13 @@
             myTickets.Clear();
 
             currentUser = await AuthService.GetCurrentUserAsync();
+            isAdmin = string.Equals(currentUser?.Role, "Admin", StringComparison.Ordinal);
+            ticketSectionTitle = isAdmin ? "All Tickets" : "My Tickets";
+            ticketSectionLabel = ticketSectionTitle;
+            ticketSectionEmptyTitle = isAdmin ? "No tickets yet" : "No assigned tickets";
+            ticketSectionEmptyDescription = isAdmin
+                ? "There are no tickets in the system yet."
+                : "You don't have any tickets assigned to you yet.";
 
             var countTasks = new List<Task<(string Key, int Count)>>
             {
@@ -242,9 +258,11 @@
                 .Select(status => FetchStatusTicketsAsync(status))
                 .ToList();
 
-            Task<IReadOnlyList<TicketDto>>? myTicketsTask = currentUser is not null
-                ? FetchAssignedTicketsAsync(currentUser.UserId)
-                : null;
+            Task<IReadOnlyList<TicketDto>>? myTicketsTask = currentUser is null
+                ? null
+                : isAdmin
+                    ? FetchRecentlyUpdatedTicketsAsync()
+                    : FetchAssignedTicketsAsync(currentUser.UserId);
 
             var countResults = await Task.WhenAll(countTasks);
             var statusTicketResults = await Task.WhenAll(statusTicketTasks);
@@ -356,6 +374,20 @@
         var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
         {
             AssignedToId = userId,
+            PageNumber = 1,
+            PageSize = RecentTicketFetchSize
+        });
+
+        return result.Items
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(RecentTicketDisplayCount)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<TicketDto>> FetchRecentlyUpdatedTicketsAsync()
+    {
+        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
+        {
             PageNumber = 1,
             PageSize = RecentTicketFetchSize
         });

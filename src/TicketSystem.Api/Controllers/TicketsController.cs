@@ -64,7 +64,7 @@ public class TicketsController : ControllerBase
         return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, ticket);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin,Agent")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<TicketResponseDto>> UpdateTicket(
         int id,
@@ -75,7 +75,7 @@ public class TicketsController : ControllerBase
         return Ok(ticket);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin,Agent")]
     [HttpPut("{id:int}/status")]
     public async Task<ActionResult<TicketResponseDto>> ChangeStatus(
         int id,

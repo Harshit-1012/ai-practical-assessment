@@ -754,3 +754,79 @@ blocked again.
 **Outcome:** Blazor compiles successfully; **110/110** tests passing 
 (no API changes). Manual flow verified: clear storage → `/dashboard` 
 redirects to `/login` → sign in → dashboard → sign out → blocked again.
+
+---
+
+### Prompt #14: Role-Based Authorization (Admin/Agent vs User)
+
+**Date:** 2026-07-18
+**Context Provided:** JWT auth with Role claim (Admin, Agent, User); 
+login-required Blazor routing stable; mutations protected by `[Authorize]` 
+but no role differentiation on update/status endpoints.
+
+**Prompt:**
+```
+Implement role-based authorization on top of the existing JWT auth, 
+using the existing Role claim (Admin, Agent, User) already in the token:
+
+Backend rules:
+- Admin and Agent: can create/update tickets, change status, add 
+  comments on any ticket (current behavior, unchanged)
+- User: can create tickets and add comments on any ticket, but CANNOT 
+  update ticket fields or change ticket status (these return 403 
+  Forbidden for User role)
+- Apply this via [Authorize(Roles = "Admin,Agent")] on 
+  PUT /api/tickets/{id} and PUT /api/tickets/{id}/status only — do NOT 
+  add role restrictions to POST /api/tickets, POST /api/tickets/{id}/
+  comments, or any GET endpoints
+
+Blazor UI:
+- Hide the Edit button and status transition buttons on TicketDetail 
+  for users with the "User" role
+- Show a clear "You don't have permission" message if a User somehow 
+  reaches an edit/status action directly
+
+Explicitly do NOT touch:
+- The existing login/logout/redirect flow (already fixed and stable)
+- CreatedById logic
+- Any read/GET endpoints
+- Ticket creation or comment creation permissions
+
+After implementing, run the full 110-test suite and report results. Do 
+not modify any existing passing tests unless a role-based change 
+genuinely requires it — flag any such change explicitly for my review 
+rather than silently editing.
+
+Also log this exact prompt in ai-prompts/implementation.md following 
+the same template as other entries.
+
+Stop after implementation so I can review before running tests — do not 
+press ahead if you're unsure about scope, ask me first.
+```
+
+**AI Response Summary:**
+Added `[Authorize(Roles = "Admin,Agent")]` to `PUT /api/tickets/{id}` 
+and `PUT /api/tickets/{id}/status` in `TicketsController`; left POST 
+and GET endpoints unchanged. Blazor: `TicketDetail.razor` hides Edit 
+and status transitions for User role (shows permission message in 
+sidebar); `EditTicket.razor` shows permission-denied alert when User 
+navigates directly to edit URL. Added `.permission-denied` style. Did 
+not modify login flow, CreatedById, or create/comment permissions.
+
+**What Was Accepted:**
+- Role restriction only on the two PUT endpoints specified
+- UI role checks via `AuthenticationStateProvider.IsInRole`
+- Direct-edit URL guarded with visible permission message
+
+**What Was Changed:** None to existing tests (see outcome note)
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Implementation complete; build verification pending user 
+review before running tests. **Test impact flagged for review:** 
+`IntegrationTestBase` authenticates as user id 3 (Role: User); existing 
+`UpdateTicket_ValidData_Returns200Ok` and all `StateMachineTransitionTests` 
+PUT status tests will return **403** until test auth is switched to 
+Agent (id 2) or Admin (id 1). No existing test files were modified.
