@@ -18,8 +18,13 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         var user = await _tokenStorage.GetUserAsync();
         var token = await _tokenStorage.GetTokenAsync();
 
-        if (user is null || string.IsNullOrWhiteSpace(token))
+        if (user is null || string.IsNullOrWhiteSpace(token) || !AuthTokenHelper.IsTokenValid(token))
         {
+            if (user is not null || !string.IsNullOrWhiteSpace(token))
+            {
+                await _tokenStorage.ClearAsync();
+            }
+
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 

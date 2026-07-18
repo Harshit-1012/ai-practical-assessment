@@ -1,4 +1,5 @@
 @page "/dashboard"
+@attribute [Authorize]
 @inject ITicketApiService TicketService
 @inject ITicketDisplayService DisplayService
 @inject IAuthService AuthService
@@ -149,16 +150,7 @@
             }
         </div>
 
-        @if (currentUser is null)
-        {
-            <div class="dashboard-signin-card">
-                <p class="dashboard-signin-card__text">Sign in to view tickets assigned to you.</p>
-                <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">
-                    Sign In
-                </button>
-            </div>
-        }
-        else if (myTickets.Count == 0)
+        @if (myTickets.Count == 0)
         {
             <EmptyState Title="No assigned tickets"
                         Description="You don't have any tickets assigned to you yet."
@@ -192,50 +184,6 @@
             </div>
         }
     </section>
-
-    @if (currentUser is null)
-    {
-        <section class="dashboard-section" aria-label="Recently Updated">
-            <div class="dashboard-section__header">
-                <h2 class="dashboard-section__title">Recently Updated</h2>
-                <span class="dashboard-section__hint">Last updated first</span>
-            </div>
-
-            @if (recentTickets.Count == 0)
-            {
-                <EmptyState Title="No tickets to show"
-                            Description="No tickets have been updated yet."
-                            Icon="📋">
-                    <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets/create"))">
-                        Create Ticket
-                    </button>
-                </EmptyState>
-            }
-            else
-            {
-                <div class="ticket-grid dashboard-recent-grid">
-                    @foreach (var ticket in recentTickets)
-                    {
-                        <article class="ticket-card" @onclick="@(() => Navigation.NavigateTo($"/tickets/{ticket.Id}"))" role="button" tabindex="0">
-                            <div class="ticket-card__header">
-                                <span class="ticket-card__id">#@ticket.Id</span>
-                                <div class="ticket-card__badges">
-                                    <StatusBadge Status="@ticket.Status" />
-                                    <PriorityBadge Priority="@ticket.Priority" />
-                                </div>
-                            </div>
-                            <h3 class="ticket-card__title">@ticket.Title</h3>
-                            <p class="ticket-card__description">@ticket.Description</p>
-                            <footer class="ticket-card__footer">
-                                <span>@DisplayService.GetAssigneeDisplay(ticket.AssignedToName)</span>
-                                <span>Updated @DisplayService.FormatRelativeDate(ticket.UpdatedAt)</span>
-                            </footer>
-                        </article>
-                    }
-                </div>
-            }
-        </section>
-    }
 }
 
 @code {
@@ -259,7 +207,6 @@
     private readonly Dictionary<string, List<TicketDto>> ticketsByStatus = new(StringComparer.Ordinal);
     private readonly HashSet<string> expandedStatuses = new(StringComparer.Ordinal) { "Open" };
     private readonly List<TicketDto> myTickets = [];
-    private readonly List<TicketDto> recentTickets = [];
 
     protected override async Task OnInitializedAsync() => await LoadDashboardAsync();
 
@@ -273,7 +220,6 @@
             priorityCounts.Clear();
             ticketsByStatus.Clear();
             myTickets.Clear();
-            recentTickets.Clear();
 
             currentUser = await AuthService.GetCurrentUserAsync();
 
@@ -296,17 +242,9 @@
                 .Select(status => FetchStatusTicketsAsync(status))
                 .ToList();
 
-            Task<IReadOnlyList<TicketDto>>? myTicketsTask = null;
-            Task<IReadOnlyList<TicketDto>>? recentTicketsTask = null;
-
-            if (currentUser is not null)
-            {
-                myTicketsTask = FetchAssignedTicketsAsync(currentUser.UserId);
-            }
-            else
-            {
-                recentTicketsTask = FetchRecentlyUpdatedTicketsAsync();
-            }
+            Task<IReadOnlyList<TicketDto>>? myTicketsTask = currentUser is not null
+                ? FetchAssignedTicketsAsync(currentUser.UserId)
+                : null;
 
             var countResults = await Task.WhenAll(countTasks);
             var statusTicketResults = await Task.WhenAll(statusTicketTasks);
@@ -314,11 +252,6 @@
             if (myTicketsTask is not null)
             {
                 myTickets.AddRange(await myTicketsTask);
-            }
-
-            if (recentTicketsTask is not null)
-            {
-                recentTickets.AddRange(await recentTicketsTask);
             }
 
             foreach (var (status, tickets) in statusTicketResults)
@@ -423,20 +356,6 @@
         var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
         {
             AssignedToId = userId,
-            PageNumber = 1,
-            PageSize = RecentTicketFetchSize
-        });
-
-        return result.Items
-            .OrderByDescending(t => t.UpdatedAt)
-            .Take(RecentTicketDisplayCount)
-            .ToList();
-    }
-
-    private async Task<IReadOnlyList<TicketDto>> FetchRecentlyUpdatedTicketsAsync()
-    {
-        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
-        {
             PageNumber = 1,
             PageSize = RecentTicketFetchSize
         });

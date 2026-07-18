@@ -31,6 +31,67 @@ html, body {
     -webkit-font-smoothing: antialiased;
 }
 
+#app {
+    min-height: 100vh;
+}
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 4rem;
+    height: 4rem;
+    margin: 20vh auto 1rem;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 0.35rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: var(--color-primary);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-out;
+}
+
+.loading-progress-text {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text, "Loading");
+}
+
+.auth-check {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+}
+
+.auth-check__spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+.auth-check__message {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
 h1, h2, h3, h4 {
     margin: 0 0 0.5rem;
     font-weight: 600;

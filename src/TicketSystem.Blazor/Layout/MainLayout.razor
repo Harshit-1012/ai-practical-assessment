@@ -61,7 +61,7 @@
     {
         await AuthService.LogoutAsync();
         currentUser = null;
-        Navigation.NavigateTo("/login");
+        Navigation.NavigateTo("/login", replace: true);
     }
 
     public void Dispose() => AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;

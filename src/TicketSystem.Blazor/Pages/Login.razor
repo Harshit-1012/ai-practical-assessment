@@ -1,5 +1,8 @@
 @page "/login"
+@layout LoginLayout
+@attribute [AllowAnonymous]
 @inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IUserApiService UserService
 @inject INotificationService Notifications
 @inject NavigationManager Navigation
@@ -9,7 +12,7 @@
 <div class="page-header">
     <div>
         <h1>Sign In</h1>
-        <p class="page-subtitle">Select a user to continue (demo authentication)</p>
+        <p class="page-subtitle">Select a user to continue</p>
     </div>
 </div>
 
@@ -36,7 +39,6 @@
         }
 
         <div class="form-actions">
-            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/tickets"))">Cancel</button>
             <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
                 @(isSubmitting ? "Signing in..." : "Sign In")
             </button>
@@ -54,6 +56,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/dashboard", replace: true);
+            return;
+        }
+
         try
         {
             users.AddRange(await UserService.GetUsersAsync());
@@ -89,7 +98,8 @@
         if (success)
         {
             Notifications.ShowSuccess("Signed in successfully.");
-            Navigation.NavigateTo("/dashboard");
+            var returnUrl = GetReturnUrl();
+            Navigation.NavigateTo(string.IsNullOrWhiteSpace(returnUrl) ? "/dashboard" : returnUrl);
         }
         else
         {
@@ -98,6 +108,31 @@
         }
 
         isSubmitting = false;
+    }
+
+    private string? GetReturnUrl()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = uri.Query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return null;
+        }
+
+        foreach (var part in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = part.Split('=', 2);
+            if (pair.Length == 2 && pair[0] == "returnUrl")
+            {
+                var returnUrl = Uri.UnescapeDataString(pair[1]);
+                if (!string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//"))
+                {
+                    return returnUrl;
+                }
+            }
+        }
+
+        return null;
     }
 
     private sealed class LoginFormModel
