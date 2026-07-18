@@ -31,6 +31,10 @@ Implements the **Core** scope of the Support Ticket Management System: a Blazor 
 - [x] Additional test tiers (unit tests) — `UnitTests/` folder: `TicketStateMachineTests`, `TicketDtoValidationTests`, `TicketEnumValidationTests` (82 unit tests, separate from `IntegrationTests/`)
 - [ ] Real-time updates (SignalR)
 
+### UX Enhancements
+
+- [x] Read-only dashboard at `/dashboard` (default landing page) — KPI summary cards (total, Open, In Progress, Resolved, Closed, Cancelled), priority breakdown, expandable tickets-by-status accordion, **My Tickets** (when signed in) or **Recently Updated** (when anonymous), and a **Browse Tickets** link to `/tickets`; data aggregated client-side from existing `GET /api/tickets` filters (no new API endpoint)
+
 ---
 
 ## Technical Changes
