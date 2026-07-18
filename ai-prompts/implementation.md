@@ -684,3 +684,73 @@ anonymous fallbacks (page now auth-gated). No API changes.
 
 **Outcome:** Implementation complete; build verification pending user 
 review before running tests.
+
+---
+
+### Prompt #13: Fix Login-Required Routing Issues
+
+**Date:** 2026-07-18
+**Context Provided:** Prompt #12 added `AuthorizeRouteView`, 
+`FallbackPolicy`, and `LoginLayout`, but unauthenticated users could 
+still reach `/dashboard`; Sign In was no longer visible; and a black 
+circle appeared during initial load.
+
+**Prompt:**
+```
+The login-required routing isn't working — visiting /dashboard directly 
+without signing in still loads the dashboard instead of redirecting to 
+/login, and the Sign In option has also disappeared entirely. Also 
+there's a black circle rendering glitch on initial load.
+
+Please:
+1. Verify FallbackPolicy is registered/applied in Program.cs
+2. Verify AuthorizeRouteView in App.razor triggers RedirectToLogin 
+   correctly on NotAuthorized
+3. Check for stale localStorage tokens causing false "authenticated" state
+4. Restore a visible Sign In entry point if the current flow requires one
+5. Fix the black circle rendering issue during the Authorizing state
+
+Test by clearing browser storage, visiting /dashboard while signed out 
+— must redirect to /login. Test full flow: login → dashboard → logout → 
+blocked again.
+```
+
+**AI Response Summary:**
+**Root causes found:**
+1. **Routes not protected** — `FallbackPolicy` alone did not gate Blazor 
+   routable pages; pages without explicit `[Authorize]` still rendered.
+2. **Stale localStorage** — stored JWT + user created an authenticated 
+   `ClaimsIdentity` even when the token was expired or invalid.
+3. **Redirect timing** — `RedirectToLogin` navigated in `OnInitialized`, 
+   which is unreliable from `NotAuthorized`.
+4. **Black circle glitch** — `index.html` Blazor WASM loading SVG had 
+   no CSS; unstyled circles rendered black on initial load.
+5. **Missing Sign In entry point** — Sign In was removed from sidebar/
+   topbar while auth enforcement was not yet working.
+
+**Fixes applied:**
+- Added `@attribute [Authorize]` to all protected pages (`/`, 
+  `/dashboard`, `/tickets`, detail, create, edit).
+- Added `AuthTokenHelper` to validate JWT `exp`; `CustomAuthStateProvider` 
+  and `AuthService.InitializeAsync` clear invalid/expired storage.
+- Moved `RedirectToLogin` navigation to `OnAfterRender` with login-route 
+  guard.
+- Replaced `Authorizing` template with a simple themed spinner; styled 
+  `.loading-progress` in `app.css`.
+- Restored Sign In on `LoginLayout` header badge and `MainLayout` 
+  fallback link; `Login.razor` now checks `AuthenticationStateProvider`.
+
+**What Was Accepted:**
+- Explicit `[Authorize]` on every protected routable page
+- Client-side JWT expiry validation with storage cleanup
+- Themed initial-load and authorizing spinners (no black circle)
+
+**What Was Changed:** None
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Blazor compiles successfully; **110/110** tests passing 
+(no API changes). Manual flow verified: clear storage → `/dashboard` 
+redirects to `/login` → sign in → dashboard → sign out → blocked again.
