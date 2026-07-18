@@ -1,0 +1,449 @@
+@page "/dashboard"
+@inject ITicketApiService TicketService
+@inject ITicketDisplayService DisplayService
+@inject IAuthService AuthService
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="page-subtitle">Overview of support ticket activity and workload</p>
+    </div>
+</div>
+
+<div class="dashboard-cta">
+    <div class="dashboard-cta__content">
+        <strong>Browse the full ticket list</strong>
+        <span>Search, filter by status or priority, sort, and paginate all tickets.</span>
+    </div>
+    <button type="button" class="btn btn-primary dashboard-cta__button" @onclick="@(() => Navigation.NavigateTo("/tickets"))">
+        Browse Tickets
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-error">@errorMessage</div>
+}
+
+<LoadingSpinner IsLoading="isLoading" Message="Loading dashboard..." />
+
+@if (!isLoading)
+{
+    <section class="dashboard-section" aria-label="Ticket summary">
+        <h2 class="dashboard-section__title">Ticket Summary</h2>
+        <div class="dashboard-kpi-grid">
+            <article class="kpi-card kpi-card--total">
+                <span class="kpi-card__label">Total Tickets</span>
+                <span class="kpi-card__value">@totalCount</span>
+            </article>
+            <article class="kpi-card kpi-card--open">
+                <span class="kpi-card__label">Open</span>
+                <span class="kpi-card__value">@openCount</span>
+            </article>
+            <article class="kpi-card kpi-card--inprogress">
+                <span class="kpi-card__label">In Progress</span>
+                <span class="kpi-card__value">@inProgressCount</span>
+            </article>
+            <article class="kpi-card kpi-card--resolved">
+                <span class="kpi-card__label">Resolved</span>
+                <span class="kpi-card__value">@resolvedCount</span>
+            </article>
+            <article class="kpi-card kpi-card--closed">
+                <span class="kpi-card__label">Closed</span>
+                <span class="kpi-card__value">@closedCount</span>
+            </article>
+            <article class="kpi-card kpi-card--cancelled">
+                <span class="kpi-card__label">Cancelled</span>
+                <span class="kpi-card__value">@cancelledCount</span>
+            </article>
+        </div>
+    </section>
+
+    <section class="dashboard-section" aria-label="Tickets by status">
+        <h2 class="dashboard-section__title">Tickets by Status</h2>
+        <div class="dashboard-accordion">
+            @foreach (var status in Statuses)
+            {
+                var statusCount = GetStatusCount(status);
+                var isExpanded = expandedStatuses.Contains(status);
+                var statusTickets = ticketsByStatus.GetValueOrDefault(status) ?? [];
+
+                <article class="dashboard-accordion__item dashboard-accordion__item--@status.ToLowerInvariant()">
+                    <button type="button"
+                            class="dashboard-accordion__trigger"
+                            aria-expanded="@isExpanded"
+                            @onclick="@(() => ToggleStatusAccordion(status))">
+                        <span class="dashboard-accordion__label">@DisplayService.GetStatusLabel(status)</span>
+                        <span class="dashboard-accordion__meta">
+                            <span class="dashboard-accordion__count">@statusCount</span>
+                            <span class="dashboard-accordion__chevron @(isExpanded ? "dashboard-accordion__chevron--open" : string.Empty)" aria-hidden="true">▾</span>
+                        </span>
+                    </button>
+
+                    @if (isExpanded)
+                    {
+                        <div class="dashboard-accordion__panel">
+                            @if (statusTickets.Count == 0)
+                            {
+                                <p class="dashboard-accordion__empty">No @DisplayService.GetStatusLabel(status).ToLowerInvariant() tickets.</p>
+                            }
+                            else
+                            {
+                                <ul class="dashboard-ticket-list">
+                                    @foreach (var ticket in statusTickets)
+                                    {
+                                        <li class="dashboard-ticket-list__item"
+                                            @onclick="@(() => Navigation.NavigateTo($"/tickets/{ticket.Id}"))"
+                                            role="button"
+                                            tabindex="0">
+                                            <div class="dashboard-ticket-list__main">
+                                                <span class="dashboard-ticket-list__id">#@ticket.Id</span>
+                                                <span class="dashboard-ticket-list__title">@ticket.Title</span>
+                                            </div>
+                                            <div class="dashboard-ticket-list__meta">
+                                                <PriorityBadge Priority="@ticket.Priority" />
+                                                <span>@DisplayService.FormatRelativeDate(ticket.UpdatedAt)</span>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                                @if (statusCount > statusTickets.Count)
+                                {
+                                    <button type="button"
+                                            class="btn btn-link dashboard-accordion__browse"
+                                            @onclick="@(() => Navigation.NavigateTo($"/tickets?status={Uri.EscapeDataString(status)}"))">
+                                        View all @statusCount @DisplayService.GetStatusLabel(status).ToLowerInvariant() tickets
+                                    </button>
+                                }
+                            }
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="dashboard-section" aria-label="Priority breakdown">
+        <h2 class="dashboard-section__title">By Priority</h2>
+        <div class="dashboard-priority-grid">
+            @foreach (var priority in Priorities)
+            {
+                <article class="priority-stat-card priority-stat-card--@priority.ToLowerInvariant()">
+                    <span class="priority-stat-card__label">@priority</span>
+                    <span class="priority-stat-card__value">@priorityCounts.GetValueOrDefault(priority)</span>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="dashboard-section" aria-label="My Tickets">
+        <div class="dashboard-section__header">
+            <h2 class="dashboard-section__title">My Tickets</h2>
+            @if (currentUser is not null)
+            {
+                <span class="dashboard-section__hint">Assigned to @currentUser.Name</span>
+            }
+        </div>
+
+        @if (currentUser is null)
+        {
+            <div class="dashboard-signin-card">
+                <p class="dashboard-signin-card__text">Sign in to view tickets assigned to you.</p>
+                <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">
+                    Sign In
+                </button>
+            </div>
+        }
+        else if (myTickets.Count == 0)
+        {
+            <EmptyState Title="No assigned tickets"
+                        Description="You don't have any tickets assigned to you yet."
+                        Icon="📋">
+                <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets"))">
+                    Browse Tickets
+                </button>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="ticket-grid dashboard-recent-grid">
+                @foreach (var ticket in myTickets)
+                {
+                    <article class="ticket-card" @onclick="@(() => Navigation.NavigateTo($"/tickets/{ticket.Id}"))" role="button" tabindex="0">
+                        <div class="ticket-card__header">
+                            <span class="ticket-card__id">#@ticket.Id</span>
+                            <div class="ticket-card__badges">
+                                <StatusBadge Status="@ticket.Status" />
+                                <PriorityBadge Priority="@ticket.Priority" />
+                            </div>
+                        </div>
+                        <h3 class="ticket-card__title">@ticket.Title</h3>
+                        <p class="ticket-card__description">@ticket.Description</p>
+                        <footer class="ticket-card__footer">
+                            <span>@DisplayService.GetAssigneeDisplay(ticket.AssignedToName)</span>
+                            <span>Updated @DisplayService.FormatRelativeDate(ticket.UpdatedAt)</span>
+                        </footer>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    @if (currentUser is null)
+    {
+        <section class="dashboard-section" aria-label="Recently Updated">
+            <div class="dashboard-section__header">
+                <h2 class="dashboard-section__title">Recently Updated</h2>
+                <span class="dashboard-section__hint">Last updated first</span>
+            </div>
+
+            @if (recentTickets.Count == 0)
+            {
+                <EmptyState Title="No tickets to show"
+                            Description="No tickets have been updated yet."
+                            Icon="📋">
+                    <button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/tickets/create"))">
+                        Create Ticket
+                    </button>
+                </EmptyState>
+            }
+            else
+            {
+                <div class="ticket-grid dashboard-recent-grid">
+                    @foreach (var ticket in recentTickets)
+                    {
+                        <article class="ticket-card" @onclick="@(() => Navigation.NavigateTo($"/tickets/{ticket.Id}"))" role="button" tabindex="0">
+                            <div class="ticket-card__header">
+                                <span class="ticket-card__id">#@ticket.Id</span>
+                                <div class="ticket-card__badges">
+                                    <StatusBadge Status="@ticket.Status" />
+                                    <PriorityBadge Priority="@ticket.Priority" />
+                                </div>
+                            </div>
+                            <h3 class="ticket-card__title">@ticket.Title</h3>
+                            <p class="ticket-card__description">@ticket.Description</p>
+                            <footer class="ticket-card__footer">
+                                <span>@DisplayService.GetAssigneeDisplay(ticket.AssignedToName)</span>
+                                <span>Updated @DisplayService.FormatRelativeDate(ticket.UpdatedAt)</span>
+                            </footer>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    private const int RecentTicketFetchSize = 50;
+    private const int RecentTicketDisplayCount = 5;
+    private const int AccordionTicketDisplayCount = 5;
+
+    private static readonly string[] Statuses = ["Open", "InProgress", "Resolved", "Closed", "Cancelled"];
+    private static readonly string[] Priorities = ["Low", "Medium", "High", "Critical"];
+
+    private bool isLoading = true;
+    private string? errorMessage;
+    private AuthenticatedUser? currentUser;
+    private int totalCount;
+    private int openCount;
+    private int inProgressCount;
+    private int resolvedCount;
+    private int closedCount;
+    private int cancelledCount;
+    private readonly Dictionary<string, int> priorityCounts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<TicketDto>> ticketsByStatus = new(StringComparer.Ordinal);
+    private readonly HashSet<string> expandedStatuses = new(StringComparer.Ordinal) { "Open" };
+    private readonly List<TicketDto> myTickets = [];
+    private readonly List<TicketDto> recentTickets = [];
+
+    protected override async Task OnInitializedAsync() => await LoadDashboardAsync();
+
+    private async Task LoadDashboardAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            priorityCounts.Clear();
+            ticketsByStatus.Clear();
+            myTickets.Clear();
+            recentTickets.Clear();
+
+            currentUser = await AuthService.GetCurrentUserAsync();
+
+            var countTasks = new List<Task<(string Key, int Count)>>
+            {
+                FetchCountAsync("total", null, null)
+            };
+
+            foreach (var status in Statuses)
+            {
+                countTasks.Add(FetchCountAsync(status, status, null));
+            }
+
+            foreach (var priority in Priorities)
+            {
+                countTasks.Add(FetchCountAsync(priority, null, priority));
+            }
+
+            var statusTicketTasks = Statuses
+                .Select(status => FetchStatusTicketsAsync(status))
+                .ToList();
+
+            Task<IReadOnlyList<TicketDto>>? myTicketsTask = null;
+            Task<IReadOnlyList<TicketDto>>? recentTicketsTask = null;
+
+            if (currentUser is not null)
+            {
+                myTicketsTask = FetchAssignedTicketsAsync(currentUser.UserId);
+            }
+            else
+            {
+                recentTicketsTask = FetchRecentlyUpdatedTicketsAsync();
+            }
+
+            var countResults = await Task.WhenAll(countTasks);
+            var statusTicketResults = await Task.WhenAll(statusTicketTasks);
+
+            if (myTicketsTask is not null)
+            {
+                myTickets.AddRange(await myTicketsTask);
+            }
+
+            if (recentTicketsTask is not null)
+            {
+                recentTickets.AddRange(await recentTicketsTask);
+            }
+
+            foreach (var (status, tickets) in statusTicketResults)
+            {
+                ticketsByStatus[status] = tickets.ToList();
+            }
+
+            foreach (var (key, count) in countResults)
+            {
+                switch (key)
+                {
+                    case "total":
+                        totalCount = count;
+                        break;
+                    case "Open":
+                        openCount = count;
+                        break;
+                    case "InProgress":
+                        inProgressCount = count;
+                        break;
+                    case "Resolved":
+                        resolvedCount = count;
+                        break;
+                    case "Closed":
+                        closedCount = count;
+                        break;
+                    case "Cancelled":
+                        cancelledCount = count;
+                        break;
+                    default:
+                        priorityCounts[key] = count;
+                        break;
+                }
+            }
+        }
+        catch (ApiClientException ex)
+        {
+            errorMessage = ex.Message;
+            Notifications.ShowError(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to load dashboard data. Ensure TicketSystem.Api is running on http://localhost:5041. ({ex.Message})";
+            Notifications.ShowError(errorMessage);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleStatusAccordion(string status)
+    {
+        if (!expandedStatuses.Add(status))
+        {
+            expandedStatuses.Remove(status);
+        }
+    }
+
+    private int GetStatusCount(string status) => status switch
+    {
+        "Open" => openCount,
+        "InProgress" => inProgressCount,
+        "Resolved" => resolvedCount,
+        "Closed" => closedCount,
+        "Cancelled" => cancelledCount,
+        _ => 0
+    };
+
+    private async Task<(string Key, int Count)> FetchCountAsync(string key, string? status, string? priority)
+    {
+        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
+        {
+            Status = status,
+            Priority = priority,
+            PageNumber = 1,
+            PageSize = 1
+        });
+
+        return (key, result.TotalCount);
+    }
+
+    private async Task<(string Status, IReadOnlyList<TicketDto> Tickets)> FetchStatusTicketsAsync(string status)
+    {
+        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
+        {
+            Status = status,
+            PageNumber = 1,
+            PageSize = AccordionTicketDisplayCount
+        });
+
+        var tickets = result.Items
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(AccordionTicketDisplayCount)
+            .ToList();
+
+        return (status, tickets);
+    }
+
+    private async Task<IReadOnlyList<TicketDto>> FetchAssignedTicketsAsync(int userId)
+    {
+        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
+        {
+            AssignedToId = userId,
+            PageNumber = 1,
+            PageSize = RecentTicketFetchSize
+        });
+
+        return result.Items
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(RecentTicketDisplayCount)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<TicketDto>> FetchRecentlyUpdatedTicketsAsync()
+    {
+        var result = await TicketService.GetTicketsAsync(new TicketSearchCriteria
+        {
+            PageNumber = 1,
+            PageSize = RecentTicketFetchSize
+        });
+
+        return result.Items
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(RecentTicketDisplayCount)
+            .ToList();
+    }
+}
