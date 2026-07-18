@@ -432,3 +432,63 @@ with whitespace-only title → **400** with validation errors;
 actual codebase. All 110 tests passing; manual API verification 
 confirmed whitespace rejection and terminal-edit blocking.
 
+---
+
+### Prompt #9: Pagination for Ticket List (Stretch)
+
+**Date:** 2026-07-18
+**Context Provided:** Completed advanced filtering/sorting on 
+`GET /api/tickets` (`TicketListQueryDto` with status, priority, 
+assignedToId, keyword, sortBy, sortDirection); Blazor `TicketList.razor` 
+with `SearchFilter.razor`; 110 tests passing (28 integration + 82 unit).
+
+**Prompt:**
+```
+Add pagination as a Stretch feature to the ticket list:
+- GET /api/tickets accepts pageNumber (default 1) and pageSize 
+  (default 10, max 50) query parameters, added to the existing 
+  TicketListQueryDto (which already has status, priority, assignedToId, 
+  keyword, sortBy, sortDirection from the advanced filtering feature)
+- Response includes pagination metadata (totalCount, totalPages, 
+  currentPage) alongside the ticket list
+- Update TicketList.razor to show page controls (Previous/Next, page 
+  numbers) and preserve existing filters/sorting/authentication state 
+  when paginating
+
+Ensure this doesn't break existing search/filter/sort/auth behavior 
+when pagination params are omitted — should default to a sensible page 
+size rather than breaking. Run the full test suite (110 tests) after to 
+confirm nothing regressed.
+
+Also log this exact prompt in ai-prompts/implementation.md following 
+the same template as other entries.
+
+Stop after implementation so I can review before running tests.
+```
+
+**AI Response Summary:**
+Extended `TicketListQueryDto` with `PageNumber` (default 1) and 
+`PageSize` (default 10, max 50). Added `TicketListResponseDto` wrapping 
+`Items` plus `TotalCount`, `TotalPages`, `CurrentPage`. Updated 
+`TicketService.GetTicketsAsync` to apply Skip/Take after filter/sort; 
+`TicketsController` maps omitted or zero query params to defaults. 
+Blazor: `TicketListResult`, `TicketSearchCriteria` page fields, 
+`TicketApiService` always sends page params with filters; 
+`TicketList.razor` Previous/Next and page-number controls reset to 
+page 1 on new search but preserve filters/sort/auth when paginating. 
+Pagination styles in `app.css`. Integration tests updated to deserialize 
+`TicketListResponseDto` and assert on `.Items` / metadata.
+
+**What Was Accepted:**
+- Paged response DTO instead of bare list
+- Controller-level defaults when `pageNumber`/`pageSize` omitted or ≤ 0
+- UI pagination preserving active filter/sort state
+
+**What Was Changed:** None
+
+**What Was Rejected:** None
+
+**Iteration Count:** 1
+
+**Outcome:** Implementation complete; build verification pending user 
+review before running full test suite.

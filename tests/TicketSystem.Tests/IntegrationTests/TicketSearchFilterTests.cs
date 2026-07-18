@@ -19,13 +19,14 @@ public class TicketSearchFilterTests : IntegrationTestBase
         await SeedTicketAsync("In progress ticket", TicketStatus.InProgress);
         await SeedTicketAsync("Another open ticket", TicketStatus.Open);
 
-        var (statusCode, body) = await Client.GetJsonAsync<List<TicketResponseDto>>(
+        var (statusCode, body) = await Client.GetJsonAsync<TicketListResponseDto>(
             $"/api/tickets?status={TicketStatus.Open}");
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.NotNull(body);
-        Assert.Equal(2, body.Count);
-        Assert.All(body, t => Assert.Equal(TicketStatus.Open.ToString(), t.Status));
+        Assert.Equal(2, body.Items.Count);
+        Assert.Equal(2, body.TotalCount);
+        Assert.All(body.Items, t => Assert.Equal(TicketStatus.Open.ToString(), t.Status));
     }
 
     [Fact]
@@ -43,13 +44,14 @@ public class TicketSearchFilterTests : IntegrationTestBase
                 title: "Laptop request",
                 description: "Need a new laptop for onboarding"));
 
-        var (statusCode, body) = await Client.GetJsonAsync<List<TicketResponseDto>>(
+        var (statusCode, body) = await Client.GetJsonAsync<TicketListResponseDto>(
             "/api/tickets?keyword=database");
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.NotNull(body);
-        Assert.Single(body);
-        Assert.Contains("database", body[0].Title, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(body.Items);
+        Assert.Equal(1, body.TotalCount);
+        Assert.Contains("database", body.Items[0].Title, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -59,14 +61,15 @@ public class TicketSearchFilterTests : IntegrationTestBase
         await SeedTicketAsync("Closed database issue", TicketStatus.Closed, "Old database incident");
         await SeedTicketAsync("Open printer issue", TicketStatus.Open, "Printer jam on floor 3");
 
-        var (statusCode, body) = await Client.GetJsonAsync<List<TicketResponseDto>>(
+        var (statusCode, body) = await Client.GetJsonAsync<TicketListResponseDto>(
             $"/api/tickets?status={TicketStatus.Open}&keyword=database");
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.NotNull(body);
-        Assert.Single(body);
-        Assert.Equal("Open database issue", body[0].Title);
-        Assert.Equal(TicketStatus.Open.ToString(), body[0].Status);
+        Assert.Single(body.Items);
+        Assert.Equal(1, body.TotalCount);
+        Assert.Equal("Open database issue", body.Items[0].Title);
+        Assert.Equal(TicketStatus.Open.ToString(), body.Items[0].Status);
     }
 
     [Fact]

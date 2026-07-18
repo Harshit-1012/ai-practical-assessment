@@ -18,7 +18,7 @@ public class TicketsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TicketResponseDto>>> GetTickets(
+    public async Task<ActionResult<TicketListResponseDto>> GetTickets(
         [FromQuery] string? status,
         [FromQuery] string? keyword,
         [FromQuery] string? priority,
@@ -26,6 +26,8 @@ public class TicketsController : ControllerBase
         [FromQuery] bool unassignedOnly,
         [FromQuery] string? sortBy,
         [FromQuery] string? sortDirection,
+        [FromQuery] int pageNumber,
+        [FromQuery] int pageSize,
         CancellationToken cancellationToken)
     {
         var query = new TicketListQueryDto
@@ -36,11 +38,13 @@ public class TicketsController : ControllerBase
             AssignedToId = assignedToId,
             UnassignedOnly = unassignedOnly,
             SortBy = sortBy,
-            SortDirection = sortDirection
+            SortDirection = sortDirection,
+            PageNumber = pageNumber <= 0 ? TicketListQueryDto.DefaultPageNumber : pageNumber,
+            PageSize = pageSize <= 0 ? TicketListQueryDto.DefaultPageSize : pageSize
         };
 
-        var tickets = await _ticketService.GetTicketsAsync(query, cancellationToken);
-        return Ok(tickets);
+        var result = await _ticketService.GetTicketsAsync(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{id:int}")]
