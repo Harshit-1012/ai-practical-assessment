@@ -25,15 +25,15 @@ Implements the **Core** scope of the Support Ticket Management System: a Blazor 
 
 ### Stretch Features
 
-- [x] User authentication / JWT (demo sign-in by user select; mutations protected; reads anonymous)
-- [ ] Role-based authorization
+- [x] User authentication / JWT — demo sign-in by user select; JWT on mutations; `CreatedById` from claims; **login-required Blazor UI** (all routes redirect to `/login` when unauthenticated via `AuthorizeRouteView` + `FallbackPolicy`; API `GET` endpoints remain anonymous)
+- [x] Role-based authorization — Admin/Agent can update tickets and change status; User can create tickets and add comments but receives **403** on update/status (`[Authorize(Roles = "Admin,Agent")]` on the two PUT endpoints); Edit/status controls hidden in UI for User role; Admin dashboard shows All Tickets, Agent/User dashboards show My Tickets (assigned)
 - [x] Pagination and advanced filtering — priority and assignee filters, sort by CreatedAt/Priority/Status (asc/desc) on `GET /api/tickets` and Blazor `SearchFilter`; paginated list with `pageNumber`/`pageSize` (defaults 1/10, max 50), response metadata (`totalCount`, `totalPages`, `currentPage`), and page controls on `TicketList.razor`
 - [x] Additional test tiers (unit tests) — `UnitTests/` folder: `TicketStateMachineTests`, `TicketDtoValidationTests`, `TicketEnumValidationTests` (82 unit tests, separate from `IntegrationTests/`)
 - [ ] Real-time updates (SignalR)
 
 ### UX Enhancements
 
-- [x] Read-only dashboard at `/dashboard` (default landing page) — KPI summary cards (total, Open, In Progress, Resolved, Closed, Cancelled), priority breakdown, expandable tickets-by-status accordion, **My Tickets** (when signed in) or **Recently Updated** (when anonymous), and a **Browse Tickets** link to `/tickets`; data aggregated client-side from existing `GET /api/tickets` filters (no new API endpoint)
+- [x] Read-only dashboard at `/dashboard` (default landing page, auth-required) — KPI summary cards (total, Open, In Progress, Resolved, Closed, Cancelled), priority breakdown, expandable tickets-by-status accordion, **All Tickets** for Admin or **My Tickets** for Agent/User, and a **Browse Tickets** link to `/tickets`; data aggregated client-side from existing `GET /api/tickets` filters (no new API endpoint)
 
 ---
 
@@ -151,9 +151,10 @@ AI assisted across all lifecycle phases — planning, design docs, implementatio
 
 ### Intentional (Core / Stretch)
 
-- Demo JWT auth only — no passwords; role claims issued but not enforced on endpoints
-- No Blazor route guards — browsing without login; mutations require sign-in
-- No pagination, audit log, or file attachments
+- Demo JWT auth only — no passwords
+- Blazor app is login-required (all pages redirect to `/login` when unauthenticated); API `GET` endpoints remain anonymous for direct API access
+- Role-based rules: Admin/Agent may update tickets and change status; User may create tickets and add comments only (403 + UI hides edit/status controls for User)
+- No audit log or file attachments
 - No real-time updates
 
 ### Documented Technical Debt (Deferred)

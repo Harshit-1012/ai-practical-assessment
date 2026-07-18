@@ -152,25 +152,39 @@ Classic Blazor routing bug with a minimal, well-understood fix; directly affects
 
 ## Deferred Suggestions
 
-### Deferred Group A: Authentication & Identity Trust — **Implemented (Stretch, 2026-07-16)**
+### Deferred Group A: Authentication & Identity Trust — **Implemented (Stretch, 2026-07-16; expanded 2026-07-17/18)**
 
 **Source:** AI Code Review — Security High  
-**Originally deferred in Phase 9; implemented as Stretch feature after Core completion.**
+**Originally deferred in Phase 9; implemented as Stretch feature after Core completion, then expanded with login-required UI routing and role-based authorization.**
 
 **Scope implemented:**
+
+*Initial JWT auth (2026-07-16):*
 - `POST /api/auth/login` — demo sign-in by selecting a seeded user (no password)
 - JWT issued on login; token stored in Blazor `localStorage` and sent as `Authorization: Bearer`
-- `[Authorize]` on mutation endpoints only (ticket create/update/status, comment create); read endpoints remain anonymous
+- `[Authorize]` on mutation endpoints (ticket create/update/status, comment create)
 - `CreatedById` derived from authenticated user claims on the server (removed from create DTOs and UI dropdowns)
 - Blazor `/login` page, `AuthenticationStateProvider`, signed-in user shown in top bar
 
+*Login-required Blazor routing (2026-07-17/18):*
+- Entire Blazor app requires authentication — **all routes redirect to `/login` if unauthenticated** via `AuthorizeRouteView`, `FallbackPolicy`, and explicit `[Authorize]` on protected pages
+- Dedicated `LoginLayout` (no sidebar/topbar); stale/expired JWT tokens cleared from `localStorage` on startup
+- Post-login redirect to `/dashboard` with optional `returnUrl`; sign-out returns to login-only state
+- **API `GET` endpoints remain anonymous** (no API change) — restriction applies to the Blazor UI only
+
+*Role-based authorization (2026-07-18):*
+- **Admin** and **Agent**: can update ticket fields and change status (unchanged from pre-role behavior for these roles)
+- **User**: can create tickets and add comments on any ticket; **cannot** update ticket fields or change status — API returns **403 Forbidden** on `PUT /api/tickets/{id}` and `PUT /api/tickets/{id}/status` (`[Authorize(Roles = "Admin,Agent")]`)
+- Blazor UI: Edit button and status transition controls hidden for User role; direct navigation to edit shows a permission-denied message
+- Dashboard: Admin sees **All Tickets** (recently updated across the system); Agent and User see **My Tickets** (assigned to them)
+
 **Still deferred (not in scope):**
-- Role-based authorization (`[Authorize(Roles = ...)]`) — roles are in JWT claims but not enforced
-- `AuthorizeRouteView` / protected Blazor routes — browsing works without login; mutations return 401 if unsigned
 - Password-based login
+- Role restrictions on `POST /api/tickets`, comment create, or any `GET` endpoint
+- Restricting `GET /api/users` or other read APIs by role
 
 **When to Revisit:**  
-Production hardening — real passwords, role policies, protected UI routes, restrict `GET /api/users`.
+Production hardening — real passwords, restrict `GET /api/users`, narrow CORS, and any finer-grained policies beyond Admin/Agent/User.
 
 ---
 
@@ -265,6 +279,7 @@ Manual UI pass before demo; address if time remains after Phase 10 documentation
 ### Security Fixes
 - Fix #1 (partial): Removed hardcoded comment author; user must explicitly select author in UI *(superseded by Stretch auth — `CreatedById` now from JWT claims)*
 - **Stretch auth (2026-07-16):** Demo JWT login, mutation endpoints protected, server-side identity
+- **Stretch auth expansion (2026-07-17/18):** Login-required Blazor routing (`AuthorizeRouteView`); role-based authorization on ticket update/status (Admin/Agent vs User)
 
 ### Performance Improvements
 - *None applied in this pass*
