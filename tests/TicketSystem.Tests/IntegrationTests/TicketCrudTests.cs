@@ -97,12 +97,13 @@ public class TicketCrudTests : IntegrationTestBase
             "/api/tickets",
             TestDataSeeder.CreateValidTicketDto(title: "Ticket B"));
 
-        var (statusCode, body) = await Client.GetJsonAsync<List<TicketResponseDto>>("/api/tickets");
+        var (statusCode, body) = await Client.GetJsonAsync<TicketListResponseDto>("/api/tickets");
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.NotNull(body);
-        Assert.Equal(2, body.Count);
-        Assert.Contains(body, t => t.Title == "Ticket A");
-        Assert.Contains(body, t => t.Title == "Ticket B");
+        Assert.Equal(2, body.Items.Count);
+        Assert.Equal(2, body.TotalCount);
+        Assert.Contains(body.Items, t => t.Title == "Ticket A");
+        Assert.Contains(body.Items, t => t.Title == "Ticket B");
     }
 }

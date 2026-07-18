@@ -65,6 +65,42 @@
                 </article>
             }
         </div>
+
+        @if (totalPages > 1)
+        {
+            <nav class="pagination" aria-label="Ticket list pagination">
+                <button type="button"
+                        class="btn btn-secondary pagination__nav"
+                        disabled="@(currentPage <= 1)"
+                        @onclick="@(() => GoToPageAsync(currentPage - 1))">
+                    Previous
+                </button>
+
+                <div class="pagination__pages">
+                    @for (var page = 1; page <= totalPages; page++)
+                    {
+                        var pageNumber = page;
+                        <button type="button"
+                                class="pagination__page @(pageNumber == currentPage ? "pagination__page--active" : string.Empty)"
+                                aria-current="@(pageNumber == currentPage ? "page" : null)"
+                                @onclick="@(() => GoToPageAsync(pageNumber))">
+                            @pageNumber
+                        </button>
+                    }
+                </div>
+
+                <button type="button"
+                        class="btn btn-secondary pagination__nav"
+                        disabled="@(currentPage >= totalPages)"
+                        @onclick="@(() => GoToPageAsync(currentPage + 1))">
+                    Next
+                </button>
+            </nav>
+        }
+
+        <p class="pagination__summary">
+            Showing page @currentPage of @totalPages (@totalCount ticket@(totalCount == 1 ? string.Empty : "s"))
+        </p>
     }
 }
 
@@ -78,6 +114,10 @@
     private string? currentAssigneeSelection;
     private string? currentSortBy;
     private string? currentSortDirection;
+    private int currentPage = TicketSearchCriteria.DefaultPageNumber;
+    private int pageSize = TicketSearchCriteria.DefaultPageSize;
+    private int totalCount;
+    private int totalPages;
 
     protected override async Task OnInitializedAsync() => await LoadTicketsAsync();
 
@@ -91,7 +131,19 @@
         currentAssigneeSelection = criteria.UnassignedOnly
             ? "unassigned"
             : criteria.AssignedToId?.ToString() ?? "all";
-        await LoadTicketsAsync(criteria);
+        currentPage = TicketSearchCriteria.DefaultPageNumber;
+        await LoadTicketsAsync(BuildCurrentCriteria());
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || (totalPages > 0 && page > totalPages) || page == currentPage)
+        {
+            return;
+        }
+
+        currentPage = page;
+        await LoadTicketsAsync(BuildCurrentCriteria());
     }
 
     private async Task LoadTicketsAsync(TicketSearchCriteria? criteria = null)
@@ -101,9 +153,12 @@
 
         try
         {
-            var results = await TicketService.GetTicketsAsync(criteria);
+            var result = await TicketService.GetTicketsAsync(criteria ?? BuildCurrentCriteria());
             tickets.Clear();
-            tickets.AddRange(results);
+            tickets.AddRange(result.Items);
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages;
+            currentPage = result.CurrentPage;
         }
         catch (ApiClientException ex)
         {
@@ -120,4 +175,19 @@
             isLoading = false;
         }
     }
+
+    private TicketSearchCriteria BuildCurrentCriteria() => new()
+    {
+        Keyword = currentKeyword,
+        Status = currentStatus,
+        Priority = currentPriority,
+        SortBy = currentSortBy,
+        SortDirection = currentSortDirection,
+        AssignedToId = currentAssigneeSelection is not null and not "all" and not "unassigned" && int.TryParse(currentAssigneeSelection, out var userId)
+            ? userId
+            : null,
+        UnassignedOnly = currentAssigneeSelection == "unassigned",
+        PageNumber = currentPage,
+        PageSize = pageSize
+    };
 }
