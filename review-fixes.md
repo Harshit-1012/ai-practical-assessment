@@ -81,6 +81,8 @@ Reject whitespace-only input at validation time (custom attribute and/or service
 **Why Accepted:**  
 Explicit requirement in `requirements-analysis.md`; small change with high correctness impact and no architectural cost.
 
+**Note:** During later Stretch work, a codebase search found this fix documented as applied but **absent from `src/`** (no `NotWhitespaceAttribute` or service guards). Re-implemented and re-verified on **2026-07-17** (110/110 tests passing; API returns 400 for whitespace-only input).
+
 ---
 
 ### Fix #3: Block Editing Terminal-State Tickets
@@ -109,6 +111,8 @@ Reject `PUT /api/tickets/{id}` when the ticket is in a terminal status (`Closed`
 
 **Why Accepted:**  
 Aligns API behavior with state machine intent; prevents silent data changes on completed tickets.
+
+**Note:** During later Stretch work, a codebase search found this fix documented as applied but **absent from `src/`** (no terminal-status guard in `UpdateTicketAsync`; Edit button always visible). Re-implemented and re-verified on **2026-07-17** (110/110 tests passing; API returns 400 for edits to Closed/Cancelled tickets).
 
 ---
 
