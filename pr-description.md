@@ -28,6 +28,7 @@ Implements the **Core** scope of the Support Ticket Management System: a Blazor 
 - [x] User authentication / JWT (demo sign-in by user select; mutations protected; reads anonymous)
 - [ ] Role-based authorization
 - [x] Pagination and advanced filtering — priority and assignee filters, sort by CreatedAt/Priority/Status (asc/desc) on `GET /api/tickets` and Blazor `SearchFilter`; pagination not implemented
+- [x] Additional test tiers (unit tests) — `UnitTests/` folder: `TicketStateMachineTests`, `TicketDtoValidationTests`, `TicketEnumValidationTests` (82 unit tests, separate from `IntegrationTests/`)
 - [ ] Real-time updates (SignalR)
 
 ---
